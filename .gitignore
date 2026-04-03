@@ -6,4 +6,5 @@ coverage/
 .worktrees/
 __pycache__/
 *.pyc
+*.egg-info/
 .env
