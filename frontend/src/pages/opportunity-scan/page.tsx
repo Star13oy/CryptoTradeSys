@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+
+import { apiGet } from "../../shared/api/client";
+
 const scanRows = [
   { symbol: "BTCUSDT", score: "7.0", edge: "0.70 bps", risk: "normal" },
   { symbol: "ETHUSDT", score: "5.8", edge: "0.58 bps", risk: "normal" },
@@ -6,7 +10,33 @@ const scanRows = [
 
 const filters = ["全市场扫描", "白名单准入", "Funding > 0", "盘口价差 < 1 bps"];
 
+type ScanPayload = {
+  rows: Array<{
+    symbol: string;
+    score: number;
+    risk_tag: string;
+    net_edge_bps?: number;
+  }>;
+};
+
 export function OpportunityScanPage() {
+  const [rows, setRows] = useState(scanRows);
+
+  useEffect(() => {
+    void apiGet<ScanPayload>("/api/v1/scan/opportunities")
+      .then((payload) =>
+        setRows(
+          payload.rows.map((row) => ({
+            symbol: row.symbol,
+            score: row.score.toFixed(1),
+            edge: `${(row.net_edge_bps ?? 0).toFixed(2)} bps`,
+            risk: row.risk_tag,
+          }))
+        )
+      )
+      .catch(() => setRows(scanRows));
+  }, []);
+
   return (
     <main className="console-shell">
       <section className="hero-panel">
@@ -51,7 +81,7 @@ export function OpportunityScanPage() {
               <span>净边际</span>
               <span>风险标签</span>
             </div>
-            {scanRows.map((row) => (
+            {rows.map((row) => (
               <div className="table-row" key={row.symbol}>
                 <strong>{row.symbol}</strong>
                 <span>{row.score}</span>
