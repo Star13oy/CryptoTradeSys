@@ -1,0 +1,9 @@
+.venv/
+node_modules/
+dist/
+coverage/
+.pytest_cache/
+.worktrees/
+__pycache__/
+*.pyc
+.env
