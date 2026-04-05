@@ -26,6 +26,7 @@ from app.backtest import (
 )
 from app.exchange.binance_trading import BinanceTradingClient
 from app.core.settings import get_settings
+from app.hedge import HedgeManagerService, HedgeOverview, HedgeRebalancePlan
 from app.journal import TradeJournalService
 from app.journal.schemas import (
     TradeJournalImportRequest,
@@ -117,6 +118,13 @@ def get_execution_read_service(
     audit_service: AuditEventService = Depends(get_audit_event_service),
 ) -> ExecutionReadService:
     return ExecutionReadService(ledger_service, audit_service)
+
+
+def get_hedge_manager_service(
+    ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
+    audit_service: AuditEventService = Depends(get_audit_event_service),
+) -> HedgeManagerService:
+    return HedgeManagerService(ledger_service, audit_service)
 
 
 @router.post("/risk/evaluate", response_model=RiskDecision)
@@ -349,3 +357,23 @@ async def get_execution_summary(
     read_service: ExecutionReadService = Depends(get_execution_read_service),
 ) -> ExecutionConsoleSnapshot:
     return read_service.snapshot(limit_incidents=limit_incidents)
+
+
+@router.get("/hedge/overview", response_model=HedgeOverview)
+async def get_hedge_overview(
+    exposure_limit_bps: float = 50.0,
+    hedge_service: HedgeManagerService = Depends(get_hedge_manager_service),
+) -> HedgeOverview:
+    return hedge_service.overview(exposure_limit_bps=exposure_limit_bps)
+
+
+@router.get("/hedge/rebalance-plan/{trade_id}", response_model=HedgeRebalancePlan)
+async def get_hedge_rebalance_plan(
+    trade_id: str,
+    exposure_limit_bps: float = 50.0,
+    hedge_service: HedgeManagerService = Depends(get_hedge_manager_service),
+) -> HedgeRebalancePlan:
+    try:
+        return hedge_service.build_rebalance_plan(trade_id, exposure_limit_bps=exposure_limit_bps)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -20,6 +20,8 @@
 5. `execution orchestrator` 的第一版状态机也已经落地，能把 `open_hedge / close_hedge` 意图落成 ledger 状态迁移和 audit 事件流。
 6. 已补上 authenticated Binance trading client 和 live adapter 边界，live 模式不再只是 stub。
 7. 已补上 live execution preflight guards、`recovery_pending` 恢复轨道，以及 execution summary 读接口。
+8. 已补上 `hedge manager` 读模型，能够对活跃交易给出 `healthy / monitoring / rebalance_required / recovery_required` 分类。
+9. 已补上 hedge rebalance plan 接口，能把暴露偏移转换成明确的再平衡建议动作。
 
 ## What Is Implemented
 
@@ -90,6 +92,8 @@
    - `live_symbol_allowlist`
    - `max_live_notional`
 13. 已支持 live `partial fill -> recovery_pending`、手动 `recover`、以及 execution summary 读模型，便于控制台展示恢复队列与最近事故。
+14. 已支持 hedge overview API，可按 `exposure_limit_bps` 对活跃交易做暴露偏移判定，为持仓监控和风险页面提供稳定后端合同。
+15. 已支持 hedge rebalance plan API，可把净暴露转成 `increase_perp_hedge / reduce_perp_hedge / recover_trade / monitor_only` 建议。
 
 ## Real Progress Against The Original Design
 
@@ -103,11 +107,13 @@
 6. `Historical Backtesting and Replay` 的第一版内核
 7. `Historical Data Repository` 的第一版手工导入与回放接口
 8. `Custom Strategy and Model Framework` 的第一版接口
+9. `Portfolio Hedge Manager` 的第一版读模型
+10. `Portfolio Hedge Manager` 的第一版再平衡建议接口
 
 ### 仍然是主要缺口的模块
 
 1. `Execution Orchestrator` 在真实 live 交易所响应下的补偿、重试、成交回报对账与部分成交恢复
-2. `Portfolio Hedge Manager`
+2. `Portfolio Hedge Manager` 的执行闭环与自动再平衡动作
 3. 持仓与执行状态机在共享 ledger 上的进一步细化
 4. 更完整的历史数据仓库与自动采集
 5. live risk / rebalance / recovery 进程
@@ -141,6 +147,8 @@
 18. execution orchestrator service / API
 19. execution summary read service / API
 20. authenticated Binance trading client + live adapter
+21. hedge manager read service / API
+22. hedge rebalance planning API
 
 ### Live scoring smoke result
 
@@ -159,8 +167,8 @@
 
 1. 用真实测试账户对 live adapter 做小额白名单联调，并补 exchange response reconciliation / retry / compensation。
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
-3. 把 `adaptation/backtest/ledger/execution` 接到 `模型工作台 / 回测实验室 / 审计中心`。
-4. 再往下推进 hedge loop、recovery worker 与 live risk daemon。
+3. 把 `adaptation/backtest/ledger/execution/hedge` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控`。
+4. 再往下推进 hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
 
 ## Practical Note
 

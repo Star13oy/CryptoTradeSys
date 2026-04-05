@@ -30,8 +30,10 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 13. A first authenticated Binance trading client plus live execution adapter boundary for signed spot/perp market orders.
 14. Execution reliability controls including idempotent replay handling, `recovery_pending` state, manual recovery actions, and live-mode preflight guards for `enabled / allowlist / max notional`.
 15. An execution read-side summary API that exposes status counts, recovery queue items, and recent incidents for the console.
-16. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
-17. Seven console pages aligned to the Stitch project:
+16. A first hedge-manager read model that classifies active trades into `healthy / monitoring / rebalance_required / recovery_required`.
+17. A hedge rebalance-plan API that translates exposure drift into an operator-facing recommended action and perp-notional adjustment hint.
+18. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
+19. Seven console pages aligned to the Stitch project:
    - `总览指挥台`
    - `机会扫描页`
    - `持仓监控`
@@ -68,6 +70,8 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 22. `/api/v1/algo/execution/execute`
 23. `/api/v1/algo/execution/recover`
 24. `/api/v1/algo/execution/summary`
+25. `/api/v1/algo/hedge/overview`
+26. `/api/v1/algo/hedge/rebalance-plan/{trade_id}`
 
 ### Runtime modules
 
@@ -81,6 +85,7 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 - `backend/app/ledger/`: shared paper/live trade ledger
 - `backend/app/audit/`: event audit persistence and query surface
 - `backend/app/execution/`: execution intent orchestration, recovery flow, and execution summary read model
+- `backend/app/hedge/`: hedge-health classification and rebalance/recovery overview
 - `backend/app/exchange/binance_trading.py`: authenticated Binance trading client for signed order placement
 
 ## Project Structure
@@ -89,6 +94,7 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 - `frontend/`: Vite + React console, Stitch-aligned pages, tests
 - `docs/superpowers/specs/`: design and requirements docs
 - `docs/superpowers/plans/`: implementation plans and progress updates
+- `docs/architecture/`: living architecture and technical deep-dive docs
 
 ## Verification Snapshot
 
@@ -101,6 +107,8 @@ Latest verified status in this worktree:
 3. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
 4. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
 5. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
+6. Hedge overview now classifies active trades by exposure drift and recovery state so positions/risk pages can consume a stable backend contract.
+7. Hedge rebalance plans now convert drift into explicit `increase/reduce perp hedge` recommendations for operator tooling.
 
 ## Local Setup
 
@@ -129,7 +137,7 @@ npm run dev
 This repository still stops short of a true production trading loop. The next major gaps are:
 
 1. Real authenticated Binance execution adapters now have preflight guards and recovery rails, but still need exchange-grade fill reconciliation, retry policy, and live rollback/compensation against real responses.
-2. Position ledger enrichment and hedge manager logic on top of the current shared trade ledger.
+2. Position ledger enrichment and hedge manager action execution on top of the current hedge overview read model.
 3. Authenticated ingestion / sync for richer historical market + trade data instead of manual dataset import.
 4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls.
 5. Live guard daemons for circuit breakers, rebalance, and recovery workers.
