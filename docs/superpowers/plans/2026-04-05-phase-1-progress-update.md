@@ -19,6 +19,7 @@
 4. `paper/live` 共用交易账本和事件审计底座也已经落地，后面可以直接给执行器复用。
 5. `execution orchestrator` 的第一版状态机也已经落地，能把 `open_hedge / close_hedge` 意图落成 ledger 状态迁移和 audit 事件流。
 6. 已补上 authenticated Binance trading client 和 live adapter 边界，live 模式不再只是 stub。
+7. 已补上 live execution preflight guards、`recovery_pending` 恢复轨道，以及 execution summary 读接口。
 
 ## What Is Implemented
 
@@ -84,6 +85,11 @@
 9. 已支持共享 trade ledger 与 audit event 的导入、列出、过滤，为后续执行与恢复流程铺底。
 10. 已支持 execution orchestrator 的首版 paper flow，可对 `open_hedge / close_hedge` 做确定性状态迁移，并在单腿失败时进入 `failed + recovery required` 轨道。
 11. 已支持 authenticated Binance spot/perp 下单客户端、请求签名与 live adapter 对接，但还未进入真实实盘联调阶段。
+12. 已支持 live execution preflight guard：
+   - `live_execution_enabled`
+   - `live_symbol_allowlist`
+   - `max_live_notional`
+13. 已支持 live `partial fill -> recovery_pending`、手动 `recover`、以及 execution summary 读模型，便于控制台展示恢复队列与最近事故。
 
 ## Real Progress Against The Original Design
 
@@ -100,7 +106,7 @@
 
 ### 仍然是主要缺口的模块
 
-1. `Execution Orchestrator` 在真实 live 交易所响应下的补偿、重试、部分成交恢复
+1. `Execution Orchestrator` 在真实 live 交易所响应下的补偿、重试、成交回报对账与部分成交恢复
 2. `Portfolio Hedge Manager`
 3. 持仓与执行状态机在共享 ledger 上的进一步细化
 4. 更完整的历史数据仓库与自动采集
@@ -111,7 +117,7 @@
 
 ### Backend
 
-- Full backend suite: `55 passed`
+- Full backend suite: `67 passed`
 
 覆盖范围包括：
 
@@ -133,7 +139,8 @@
 16. shared trade ledger store / service / API
 17. audit event store / service / API
 18. execution orchestrator service / API
-19. authenticated Binance trading client + live adapter
+19. execution summary read service / API
+20. authenticated Binance trading client + live adapter
 
 ### Live scoring smoke result
 
@@ -150,10 +157,10 @@
 
 最推荐的下一段工作顺序：
 
-1. 用真实测试账户对 live adapter 做小额白名单联调，并补 partial fill / retry / idempotency。
+1. 用真实测试账户对 live adapter 做小额白名单联调，并补 exchange response reconciliation / retry / compensation。
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
-3. 把 `adaptation/backtest/ledger/execution` 接到 `模型工作台 / 回测实验室`。
-4. 再往下推进 hedge loop 与 recovery worker。
+3. 把 `adaptation/backtest/ledger/execution` 接到 `模型工作台 / 回测实验室 / 审计中心`。
+4. 再往下推进 hedge loop、recovery worker 与 live risk daemon。
 
 ## Practical Note
 

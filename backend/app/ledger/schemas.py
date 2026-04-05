@@ -6,7 +6,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 TradeMode = Literal["paper", "live"]
-TradeLedgerStatus = Literal["candidate", "open", "hedged", "closing", "closed", "failed", "cancelled"]
+TradeLedgerStatus = Literal[
+    "candidate",
+    "open",
+    "hedged",
+    "closing",
+    "closed",
+    "failed",
+    "recovery_pending",
+    "cancelled",
+]
 LedgerWriteMode = Literal["append", "replace"]
 TradeStatus = TradeLedgerStatus
 

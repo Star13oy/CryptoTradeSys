@@ -10,7 +10,10 @@ from app.audit import (
 )
 from app.execution import (
     BinanceLiveExecutionAdapter,
+    ExecutionConsoleSnapshot,
     ExecutionIntentRequest,
+    ExecutionRecoveryRequest,
+    ExecutionReadService,
     ExecutionOrchestrator,
     ExecutionResult,
 )
@@ -94,7 +97,26 @@ def get_execution_orchestrator(
     live_adapter = None
     if settings.binance_api_key and settings.binance_api_secret:
         live_adapter = BinanceLiveExecutionAdapter(BinanceTradingClient())
-    return ExecutionOrchestrator(ledger_service, audit_service, live_adapter=live_adapter)
+    allowlist = {
+        symbol.strip().upper()
+        for symbol in settings.live_symbol_allowlist.split(",")
+        if symbol.strip()
+    }
+    return ExecutionOrchestrator(
+        ledger_service,
+        audit_service,
+        live_adapter=live_adapter,
+        live_execution_enabled=settings.live_execution_enabled,
+        live_symbol_allowlist=allowlist,
+        max_live_notional=settings.max_live_notional,
+    )
+
+
+def get_execution_read_service(
+    ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
+    audit_service: AuditEventService = Depends(get_audit_event_service),
+) -> ExecutionReadService:
+    return ExecutionReadService(ledger_service, audit_service)
 
 
 @router.post("/risk/evaluate", response_model=RiskDecision)
@@ -308,3 +330,22 @@ async def execute_intent(
         return orchestrator.execute(request)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/execution/recover", response_model=ExecutionResult)
+async def recover_execution(
+    request: ExecutionRecoveryRequest,
+    orchestrator: ExecutionOrchestrator = Depends(get_execution_orchestrator),
+) -> ExecutionResult:
+    try:
+        return orchestrator.recover(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/execution/summary", response_model=ExecutionConsoleSnapshot)
+async def get_execution_summary(
+    limit_incidents: int = 5,
+    read_service: ExecutionReadService = Depends(get_execution_read_service),
+) -> ExecutionConsoleSnapshot:
+    return read_service.snapshot(limit_incidents=limit_incidents)

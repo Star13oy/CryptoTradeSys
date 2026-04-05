@@ -37,6 +37,8 @@ class BinanceTradingClient:
         side: str,
         quote_order_qty: float | None = None,
         quantity: float | None = None,
+        recv_window: int | None = None,
+        new_client_order_id: str | None = None,
     ) -> dict:
         payload = {
             "symbol": symbol,
@@ -47,6 +49,10 @@ class BinanceTradingClient:
             payload["quoteOrderQty"] = self._stringify(quote_order_qty)
         if quantity is not None:
             payload["quantity"] = self._stringify(quantity)
+        if recv_window is not None:
+            payload["recvWindow"] = str(recv_window)
+        if new_client_order_id is not None:
+            payload["newClientOrderId"] = new_client_order_id
         return self._signed_post(f"{self._spot_base_url}/api/v3/order", payload)
 
     def place_perp_market_order(
@@ -56,6 +62,8 @@ class BinanceTradingClient:
         side: str,
         quantity: float,
         reduce_only: bool = False,
+        recv_window: int | None = None,
+        new_client_order_id: str | None = None,
     ) -> dict:
         payload = {
             "symbol": symbol,
@@ -64,6 +72,10 @@ class BinanceTradingClient:
             "quantity": self._stringify(quantity),
             "reduceOnly": "true" if reduce_only else "false",
         }
+        if recv_window is not None:
+            payload["recvWindow"] = str(recv_window)
+        if new_client_order_id is not None:
+            payload["newClientOrderId"] = new_client_order_id
         return self._signed_post(f"{self._perp_base_url}/fapi/v1/order", payload)
 
     def _signed_post(self, url: str, payload: dict[str, str]) -> dict:

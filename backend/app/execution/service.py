@@ -6,7 +6,7 @@ from app.audit import AuditEventRecord, AuditEventService
 from app.ledger import TradeLedgerRecord, TradeLedgerService
 
 from .adapters import BinanceLiveExecutionAdapter
-from .schemas import ExecutionIntentRequest, ExecutionLegReport, ExecutionResult
+from .schemas import ExecutionIntentRequest, ExecutionLegReport, ExecutionRecoveryRequest, ExecutionResult
 
 
 class ExecutionOrchestrator:
@@ -15,18 +15,108 @@ class ExecutionOrchestrator:
         ledger_service: TradeLedgerService | None = None,
         audit_service: AuditEventService | None = None,
         live_adapter: BinanceLiveExecutionAdapter | None = None,
+        *,
+        live_execution_enabled: bool = False,
+        live_symbol_allowlist: set[str] | None = None,
+        max_live_notional: float | None = None,
     ) -> None:
         self._ledger_service = ledger_service or TradeLedgerService()
         self._audit_service = audit_service or AuditEventService()
         self._live_adapter = live_adapter
+        self._live_execution_enabled = live_execution_enabled
+        self._live_symbol_allowlist = live_symbol_allowlist or set()
+        self._max_live_notional = max_live_notional
 
     def execute(self, request: ExecutionIntentRequest) -> ExecutionResult:
         occurred_at = datetime.now(timezone.utc)
+        idempotent = self._handle_idempotent_replay(request, occurred_at)
+        if idempotent is not None:
+            return idempotent
         if request.mode == "live":
+            self._validate_live_request(request)
             return self._execute_live(request, occurred_at)
         if request.action == "open_hedge":
             return self._execute_open(request, occurred_at)
         return self._execute_close(request, occurred_at)
+
+    def recover(self, request: ExecutionRecoveryRequest) -> ExecutionResult:
+        base_time = datetime.now(timezone.utc)
+        existing = self._ledger_service.get_record(request.trade_id)
+        if existing is None:
+            raise ValueError(f"trade '{request.trade_id}' not found in ledger")
+        if existing.status not in {"failed", "recovery_pending"}:
+            raise ValueError(f"trade '{request.trade_id}' is not in recoverable state")
+
+        events: list[AuditEventRecord] = []
+        events.append(
+            self._record_event(
+                event_type="execution.recovery.started",
+                summary=f"Recovery started for {existing.symbol}",
+                occurred_at=base_time,
+                payload={"trade_id": request.trade_id, "action": request.action},
+                tags=["execution", "recovery", existing.mode],
+            )
+        )
+
+        if request.action == "resume_open":
+            recovered = existing.model_copy(update={"status": "hedged", "notes": request.notes or existing.notes})
+            self._ledger_service.save_record(recovered)
+            events.append(
+                self._record_event(
+                    event_type="execution.recovery.perp.filled",
+                    summary=f"Recovery filled missing perp leg for {existing.symbol}",
+                    occurred_at=base_time + timedelta(milliseconds=1),
+                    payload={"trade_id": request.trade_id},
+                    tags=["execution", "recovery", "perp", existing.mode],
+                )
+            )
+            events.append(
+                self._record_event(
+                    event_type="execution.recovery.completed",
+                    summary=f"Recovery completed for {existing.symbol}",
+                    occurred_at=base_time + timedelta(milliseconds=2),
+                    payload={"trade_id": request.trade_id, "status": "hedged"},
+                    tags=["execution", "recovery", "completed", existing.mode],
+                )
+            )
+            return ExecutionResult(
+                trade_id=existing.trade_id,
+                action="open_hedge",
+                mode=existing.mode,
+                symbol=existing.symbol,
+                status="hedged",
+                ledger_record=recovered,
+                events=events,
+                executed_at=base_time + timedelta(milliseconds=2),
+            )
+
+        closed = existing.model_copy(
+            update={
+                "status": "closed",
+                "closed_at": base_time + timedelta(milliseconds=2),
+                "notes": request.notes or existing.notes,
+            }
+        )
+        self._ledger_service.save_record(closed)
+        events.append(
+            self._record_event(
+                event_type="execution.recovery.completed",
+                summary=f"Close recovery completed for {existing.symbol}",
+                occurred_at=base_time + timedelta(milliseconds=2),
+                payload={"trade_id": request.trade_id, "status": "closed"},
+                tags=["execution", "recovery", "completed", existing.mode],
+            )
+        )
+        return ExecutionResult(
+            trade_id=existing.trade_id,
+            action="close_hedge",
+            mode=existing.mode,
+            symbol=existing.symbol,
+            status="closed",
+            ledger_record=closed,
+            events=events,
+            executed_at=base_time + timedelta(milliseconds=2),
+        )
 
     def _execute_live(self, request: ExecutionIntentRequest, base_time: datetime) -> ExecutionResult:
         if self._live_adapter is None:
@@ -241,17 +331,18 @@ class ExecutionOrchestrator:
             events.append(self._record_live_leg_event(request.trade_id, report, base_time + timedelta(milliseconds=index)))
 
         failed = any(report.status == "failed" for report in reports)
-        final_status = "failed" if failed else "hedged"
+        partial = any(report.status == "partial" for report in reports)
+        final_status = "failed" if failed else "recovery_pending" if partial else "hedged"
         record = record.model_copy(update={"status": final_status})
         self._ledger_service.save_record(record)
-        if failed:
+        if failed or partial:
             events.append(
                 self._record_event(
                     event_type="execution.recovery.required",
-                    summary=f"Recovery required after live partial failure on {request.symbol}",
-                    severity="critical",
+                    summary=f"Recovery required after live open issue on {request.symbol}",
+                    severity="critical" if failed else "warning",
                     occurred_at=base_time + timedelta(milliseconds=len(reports) + 1),
-                    payload={"trade_id": request.trade_id, "status": "failed"},
+                    payload={"trade_id": request.trade_id, "status": final_status},
                     tags=["execution", "recovery", request.mode],
                 )
             )
@@ -307,24 +398,25 @@ class ExecutionOrchestrator:
             )
 
         failed = any(report.status == "failed" for report in reports)
-        final_status = "failed" if failed else "closed"
+        partial = any(report.status == "partial" for report in reports)
+        final_status = "failed" if failed else "recovery_pending" if partial else "closed"
         closed = closing.model_copy(
             update={
                 "status": final_status,
-                "closed_at": None if failed else base_time + timedelta(milliseconds=len(reports) + 1),
+                "closed_at": None if final_status != "closed" else base_time + timedelta(milliseconds=len(reports) + 1),
                 "realized_pnl": request.realized_pnl,
                 "notes": request.notes or closing.notes,
             }
         )
         self._ledger_service.save_record(closed)
-        if failed:
+        if failed or partial:
             events.append(
                 self._record_event(
                     event_type="execution.recovery.required",
-                    summary=f"Recovery required after live close failure on {request.symbol}",
-                    severity="critical",
+                    summary=f"Recovery required after live close issue on {request.symbol}",
+                    severity="critical" if failed else "warning",
                     occurred_at=base_time + timedelta(milliseconds=len(reports) + 1),
-                    payload={"trade_id": request.trade_id, "status": "failed"},
+                    payload={"trade_id": request.trade_id, "status": final_status},
                     tags=["execution", "recovery", request.mode],
                 )
             )
@@ -390,3 +482,58 @@ class ExecutionOrchestrator:
         if request.net_exposure is not None:
             return request.net_exposure
         return round(request.spot_notional - request.perp_notional, 4)
+
+    def _validate_live_request(self, request: ExecutionIntentRequest) -> None:
+        if not self._live_execution_enabled:
+            raise ValueError("live execution is disabled")
+        if self._live_symbol_allowlist and request.symbol not in self._live_symbol_allowlist:
+            raise ValueError(f"symbol '{request.symbol}' is not in live execution allowlist")
+        requested_notional = max(request.spot_notional, request.perp_notional)
+        if self._max_live_notional is not None and requested_notional > self._max_live_notional:
+            raise ValueError("requested notional exceeds configured live notional limit")
+
+    def _handle_idempotent_replay(
+        self,
+        request: ExecutionIntentRequest,
+        occurred_at: datetime,
+    ) -> ExecutionResult | None:
+        existing = self._ledger_service.get_record(request.trade_id)
+        if existing is None:
+            return None
+        if request.action == "open_hedge" and existing.status in {"open", "hedged", "closing", "closed", "recovery_pending"}:
+            event = self._record_event(
+                event_type="execution.idempotent.replay",
+                summary=f"Replayed open intent for existing trade {request.trade_id}",
+                occurred_at=occurred_at,
+                payload={"trade_id": request.trade_id, "status": existing.status},
+                tags=["execution", "idempotent", request.mode],
+            )
+            return ExecutionResult(
+                trade_id=request.trade_id,
+                action=request.action,
+                mode=request.mode,
+                symbol=request.symbol,
+                status=existing.status,
+                ledger_record=existing,
+                events=[event],
+                executed_at=occurred_at,
+            )
+        if request.action == "close_hedge" and existing.status == "closed":
+            event = self._record_event(
+                event_type="execution.idempotent.replay",
+                summary=f"Replayed close intent for existing trade {request.trade_id}",
+                occurred_at=occurred_at,
+                payload={"trade_id": request.trade_id, "status": existing.status},
+                tags=["execution", "idempotent", request.mode],
+            )
+            return ExecutionResult(
+                trade_id=request.trade_id,
+                action=request.action,
+                mode=request.mode,
+                symbol=request.symbol,
+                status=existing.status,
+                ledger_record=existing,
+                events=[event],
+                executed_at=occurred_at,
+            )
+        return None

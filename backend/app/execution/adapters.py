@@ -19,12 +19,14 @@ class BinanceLiveExecutionAdapter:
             symbol=request.symbol,
             side="BUY",
             quote_order_qty=request.spot_notional,
+            new_client_order_id=f"{request.trade_id}-spot-open",
         )
         perp = self._trading_client.place_perp_market_order(
             symbol=request.symbol,
             side="SELL",
             quantity=request.perp_quantity,
             reduce_only=False,
+            new_client_order_id=f"{request.trade_id}-perp-open",
         )
         return [
             ExecutionLegReport(leg="spot", status=self._normalize_status(spot), payload=spot),
@@ -41,12 +43,14 @@ class BinanceLiveExecutionAdapter:
             symbol=request.symbol,
             side="SELL",
             quantity=request.spot_quantity,
+            new_client_order_id=f"{request.trade_id}-spot-close",
         )
         perp = self._trading_client.place_perp_market_order(
             symbol=request.symbol,
             side="BUY",
             quantity=request.perp_quantity,
             reduce_only=True,
+            new_client_order_id=f"{request.trade_id}-perp-close",
         )
         return [
             ExecutionLegReport(leg="spot", status=self._normalize_status(spot), payload=spot),
@@ -57,7 +61,9 @@ class BinanceLiveExecutionAdapter:
         status = str(payload.get("status", "submitted")).lower()
         if status == "filled":
             return "filled"
-        if status in {"new", "partially_filled"}:
+        if status == "partially_filled":
+            return "partial"
+        if status in {"new"}:
             return "submitted"
         if status in {"rejected", "expired", "canceled"}:
             return "failed"
