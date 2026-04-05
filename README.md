@@ -34,7 +34,8 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 17. A hedge rebalance-plan API that translates exposure drift into an operator-facing recommended action and perp-notional adjustment hint.
 18. A first reconciliation foundation that imports exchange order reports and compares them against live ledger plus execution audit trails.
 19. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
-20. Seven console pages aligned to the Stitch project:
+20. Configurable persistence backends: JSON remains the default for fast local iteration, and MySQL is now available for tuning state, learning samples, journal records, datasets, ledger, audit events, and exchange order reports.
+21. Seven console pages aligned to the Stitch project:
    - `总览指挥台`
    - `机会扫描页`
    - `持仓监控`
@@ -42,6 +43,8 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
    - `回测实验室`
    - `模型工作台`
    - `审计与日志中心`
+22. JSON-to-MySQL backfill tooling plus a reconciliation candidate read model for surfacing trades that still need exchange-report follow-up.
+23. Authenticated reconciliation sync that can pull spot/perp order status from Binance for a specific live trade or the highest-priority attention queue, then upsert the resulting exchange reports.
 
 ## Current Backend Surface
 
@@ -76,6 +79,10 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 27. `/api/v1/algo/reconciliation/reports`
 28. `/api/v1/algo/reconciliation/reports/import`
 29. `/api/v1/algo/reconciliation/summary`
+30. `/api/v1/algo/reconciliation/candidates`
+31. `/api/v1/algo/persistence/backfill-json`
+32. `/api/v1/algo/reconciliation/sync/{trade_id}`
+33. `/api/v1/algo/reconciliation/sync`
 
 ### Runtime modules
 
@@ -91,7 +98,10 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 - `backend/app/execution/`: execution intent orchestration, recovery flow, and execution summary read model
 - `backend/app/hedge/`: hedge-health classification and rebalance/recovery overview
 - `backend/app/reconciliation/`: imported exchange-order reports and ledger/audit reconciliation summary
+- `backend/app/persistence/`: optional MySQL persistence helpers and backend selection
+- `backend/app/persistence/migration.py`: JSON-to-MySQL backfill service and summary schema
 - `backend/app/exchange/binance_trading.py`: authenticated Binance trading client for signed order placement
+- `backend/app/reconciliation/service.py`: reconciliation summary, candidate list, and authenticated trade/batch exchange sync
 
 ## Project Structure
 
@@ -105,15 +115,21 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 
 Latest verified status in this worktree:
 
-1. Full backend suite: `73 passed`
-2. Full frontend suite: `17 passed`
-3. Frontend production build: `vite build` passed
-4. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
-5. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
-6. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
-7. Hedge overview now classifies active trades by exposure drift and recovery state so positions/risk pages can consume a stable backend contract.
-8. Hedge rebalance plans now convert drift into explicit `increase/reduce perp hedge` recommendations for operator tooling.
-9. Reconciliation can now import exchange order snapshots and flag missing exchange reports or local/exchange status mismatches.
+1. Full backend suite with MySQL slice enabled: `87 passed`
+2. Opt-in MySQL integration slice: `3 passed`
+3. Full frontend suite: `18 passed`
+4. Frontend production build: `vite build` passed
+5. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
+6. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
+7. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
+8. Hedge overview now classifies active trades by exposure drift and recovery state so positions/risk pages can consume a stable backend contract.
+9. Hedge rebalance plans now convert drift into explicit `increase/reduce perp hedge` recommendations for operator tooling.
+10. Reconciliation can now import exchange order snapshots and flag missing exchange reports or local/exchange status mismatches.
+11. Reconciliation can now list trade-centric candidate contexts so operators can see expected order ids, reported order ids, and missing legs before opening the summary drawer.
+12. JSON-backed historical state can now be backfilled into MySQL without duplicating previously imported payloads.
+13. A specific live trade can now trigger authenticated exchange-order sync so reconciliation is no longer limited to manual report imports.
+14. The risk center now consumes reconciliation candidates directly, so attention-needed trades show up in the UI without demo-only placeholders.
+15. The reconciliation service can now batch-sync the highest-priority attention queue, which is a cleaner bridge toward a future background worker.
 
 ## Local Setup
 
@@ -125,6 +141,46 @@ python -m venv .venv
 $env:PYTHONPATH = "backend"
 .\.venv\Scripts\python -m pytest backend/tests -q
 .\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --reload --port 8000
+```
+
+### Backend with MySQL persistence
+
+```powershell
+mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS crypto_funding_arb;"
+$env:FUNDING_ARB_STORAGE_BACKEND = "mysql"
+$env:FUNDING_ARB_MYSQL_HOST = "127.0.0.1"
+$env:FUNDING_ARB_MYSQL_PORT = "3306"
+$env:FUNDING_ARB_MYSQL_USER = "root"
+$env:FUNDING_ARB_MYSQL_PASSWORD = "root"
+$env:FUNDING_ARB_MYSQL_DATABASE = "crypto_funding_arb"
+.\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --reload --port 8000
+```
+
+A ready-to-edit template is available at `.env.example`.
+
+For opt-in MySQL persistence tests:
+
+```powershell
+$env:FUNDING_ARB_RUN_MYSQL_TESTS = "1"
+.\.venv\Scripts\python -m pytest backend/tests/test_mysql_store_integration.py -q
+```
+
+To backfill existing JSON state into MySQL once the database backend is enabled:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/persistence/backfill-json"
+```
+
+To sync exchange order reports for a specific live trade:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/sync/<trade_id>"
+```
+
+To batch-sync the current attention queue:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/sync?limit=5"
 ```
 
 ### Frontend
@@ -144,5 +200,7 @@ This repository still stops short of a true production trading loop. The next ma
 1. Real authenticated Binance execution adapters now have preflight guards and recovery rails, but still need exchange-grade fill reconciliation, retry policy, and live rollback/compensation against real responses.
 2. Position ledger enrichment and hedge manager action execution on top of the current hedge overview read model.
 3. Authenticated ingestion / sync for richer historical market + trade data instead of manual dataset import.
-4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls.
+4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls beyond the dashboard/scan/positions/risk surfaces already wired.
 5. Live guard daemons for circuit breakers, rebalance, and recovery workers.
+6. Migration/backfill utilities and stronger transactional guarantees on top of the newly added MySQL backend.
+7. Automatic daemonized exchange report pull/sync so reconciliation no longer depends on manual or operator-triggered imports.

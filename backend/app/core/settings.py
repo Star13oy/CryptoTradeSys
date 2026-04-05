@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +17,13 @@ class Settings(BaseSettings):
     live_symbol_allowlist: str = "BTCUSDT,ETHUSDT,SOLUSDT"
     max_live_notional: float = 25000
     scan_limit: int = 25
+    storage_backend: Literal["json", "mysql"] = "json"
+    mysql_host: str = "127.0.0.1"
+    mysql_port: int = 3306
+    mysql_user: str = "root"
+    mysql_password: str = "root"
+    mysql_database: str = "crypto_funding_arb"
+    mysql_charset: str = "utf8mb4"
     tuning_state_path: str = "backend/runtime/tuning-state.json"
     learning_sample_path: str = "backend/runtime/learning-samples.json"
     trade_journal_path: str = "backend/runtime/trade-journal.json"

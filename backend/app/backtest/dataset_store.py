@@ -7,8 +7,21 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from app.core.settings import get_settings
+from app.persistence import MySQLPersistence, mysql_storage_enabled
 
 from .engine import BacktestPeriod
+
+_TABLE_NAME = "backtest_datasets"
+_CREATE_TABLE_SQL = f"""
+CREATE TABLE IF NOT EXISTS {_TABLE_NAME} (
+    dataset_id VARCHAR(191) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    source VARCHAR(128) NOT NULL,
+    imported_at DATETIME(6) NOT NULL,
+    payload JSON NOT NULL,
+    KEY idx_backtest_datasets_imported_at (imported_at)
+)
+"""
 
 
 class BacktestDataset(BaseModel):
@@ -48,10 +61,17 @@ class BacktestDatasetSummary(BaseModel):
 
 class BacktestDatasetStore:
     def __init__(self, path: str | Path | None = None) -> None:
-        settings = get_settings()
-        self._path = Path(path or settings.backtest_dataset_path)
+        self._settings = get_settings()
+        self._path = Path(path or self._settings.backtest_dataset_path)
+        self._mysql = MySQLPersistence(self._settings)
 
     def list_datasets(self) -> list[BacktestDataset]:
+        if mysql_storage_enabled(self._settings):
+            self._mysql.ensure_table(_TABLE_NAME, _CREATE_TABLE_SQL)
+            payloads = self._mysql.fetch_json_rows(
+                f"SELECT payload FROM {_TABLE_NAME} ORDER BY imported_at, dataset_id"
+            )
+            return [BacktestDataset.model_validate(item) for item in payloads]
         if not self._path.exists():
             return []
         payload = json.loads(self._path.read_text(encoding="utf-8"))
@@ -67,6 +87,22 @@ class BacktestDatasetStore:
         return None
 
     def save_dataset(self, dataset: BacktestDataset) -> BacktestDataset:
+        if mysql_storage_enabled(self._settings):
+            self._mysql.ensure_table(_TABLE_NAME, _CREATE_TABLE_SQL)
+            self._mysql.execute(
+                f"""
+                REPLACE INTO {_TABLE_NAME} (dataset_id, title, source, imported_at, payload)
+                VALUES (%s, %s, %s, %s, CAST(%s AS JSON))
+                """,
+                (
+                    dataset.dataset_id,
+                    dataset.title,
+                    dataset.source,
+                    self._mysql.to_mysql_datetime(dataset.imported_at),
+                    self._mysql.serialize(dataset),
+                ),
+            )
+            return dataset
         datasets = self.list_datasets()
         replaced = False
         for index, existing in enumerate(datasets):

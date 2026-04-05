@@ -40,6 +40,24 @@ class ExchangeOrderReportListResponse(BaseModel):
     reports: list[ExchangeOrderReport] = Field(default_factory=list)
 
 
+class ReconciliationCandidate(BaseModel):
+    trade_id: str
+    symbol: str
+    local_status: str
+    expected_order_ids: list[str] = Field(default_factory=list)
+    reported_order_ids: list[str] = Field(default_factory=list)
+    missing_order_ids: list[str] = Field(default_factory=list)
+    exchange_statuses: list[str] = Field(default_factory=list)
+    latest_event_at: datetime | None = None
+    latest_report_at: datetime | None = None
+    suggested_action: SuggestedAction = "none"
+    needs_attention: bool = False
+
+
+class ReconciliationCandidateListResponse(BaseModel):
+    candidates: list[ReconciliationCandidate] = Field(default_factory=list)
+
+
 class ReconciliationIssue(BaseModel):
     trade_id: str
     symbol: str

@@ -41,8 +41,11 @@ from app.ledger import (
     TradeLedgerService,
     TradeLedgerStore,
 )
+from app.persistence.migration import JsonToMySQLBackfillService
+from app.persistence.migration_schemas import PersistenceBackfillSummary
 from app.risk import OpportunityRiskPolicy, RiskDecision
 from app.reconciliation import (
+    ReconciliationCandidateListResponse,
     ExchangeOrderReportImportRequest,
     ExchangeOrderReportImportResponse,
     ExchangeOrderReportListResponse,
@@ -146,6 +149,10 @@ def get_reconciliation_service(
         ledger_service,
         audit_service,
     )
+
+
+def get_persistence_backfill_service() -> JsonToMySQLBackfillService:
+    return JsonToMySQLBackfillService()
 
 
 @router.post("/risk/evaluate", response_model=RiskDecision)
@@ -423,8 +430,56 @@ async def import_reconciliation_reports(
     )
 
 
+@router.post("/reconciliation/sync/{trade_id}", response_model=ExchangeOrderReportImportResponse)
+async def sync_reconciliation_reports(
+    trade_id: str,
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ExchangeOrderReportImportResponse:
+    try:
+        persisted = reconciliation_service.sync_reports_for_trade(trade_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ExchangeOrderReportImportResponse(
+        imported_reports=len(persisted),
+        total_reports=len(persisted),
+    )
+
+
+@router.post("/reconciliation/sync", response_model=ExchangeOrderReportImportResponse)
+async def sync_attention_reconciliation_reports(
+    limit: int | None = None,
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ExchangeOrderReportImportResponse:
+    persisted = reconciliation_service.sync_attention_candidates(limit=limit)
+    return ExchangeOrderReportImportResponse(
+        imported_reports=len(persisted),
+        total_reports=len(persisted),
+    )
+
+
 @router.get("/reconciliation/summary", response_model=ReconciliationSummary)
 async def get_reconciliation_summary(
     reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> ReconciliationSummary:
     return reconciliation_service.build_summary()
+
+
+@router.get("/reconciliation/candidates", response_model=ReconciliationCandidateListResponse)
+async def list_reconciliation_candidates(
+    symbol: str | None = None,
+    only_attention: bool = False,
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationCandidateListResponse:
+    return ReconciliationCandidateListResponse(
+        candidates=reconciliation_service.list_candidates(symbol=symbol, only_attention=only_attention),
+    )
+
+
+@router.post("/persistence/backfill-json", response_model=PersistenceBackfillSummary)
+async def backfill_json_to_mysql(
+    backfill_service: JsonToMySQLBackfillService = Depends(get_persistence_backfill_service),
+) -> PersistenceBackfillSummary:
+    try:
+        return backfill_service.run()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

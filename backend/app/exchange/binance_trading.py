@@ -78,6 +78,40 @@ class BinanceTradingClient:
             payload["newClientOrderId"] = new_client_order_id
         return self._signed_post(f"{self._perp_base_url}/fapi/v1/order", payload)
 
+    def get_spot_order(
+        self,
+        *,
+        symbol: str,
+        order_id: str | None = None,
+        orig_client_order_id: str | None = None,
+        recv_window: int | None = None,
+    ) -> dict:
+        payload = {"symbol": symbol}
+        if order_id is not None:
+            payload["orderId"] = str(order_id)
+        if orig_client_order_id is not None:
+            payload["origClientOrderId"] = orig_client_order_id
+        if recv_window is not None:
+            payload["recvWindow"] = str(recv_window)
+        return self._signed_get(f"{self._spot_base_url}/api/v3/order", payload)
+
+    def get_perp_order(
+        self,
+        *,
+        symbol: str,
+        order_id: str | None = None,
+        orig_client_order_id: str | None = None,
+        recv_window: int | None = None,
+    ) -> dict:
+        payload = {"symbol": symbol}
+        if order_id is not None:
+            payload["orderId"] = str(order_id)
+        if orig_client_order_id is not None:
+            payload["origClientOrderId"] = orig_client_order_id
+        if recv_window is not None:
+            payload["recvWindow"] = str(recv_window)
+        return self._signed_get(f"{self._perp_base_url}/fapi/v1/order", payload)
+
     def _signed_post(self, url: str, payload: dict[str, str]) -> dict:
         if not self._api_key or not self._api_secret:
             raise ValueError("binance api credentials are not configured")
@@ -94,6 +128,25 @@ class BinanceTradingClient:
             headers={
                 "X-MBX-APIKEY": self._api_key,
                 "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def _signed_get(self, url: str, payload: dict[str, str]) -> dict:
+        if not self._api_key or not self._api_secret:
+            raise ValueError("binance api credentials are not configured")
+        request_payload = {
+            **payload,
+            "timestamp": str(self._timestamp_provider()),
+        }
+        query = urlencode(request_payload)
+        signature = hmac.new(self._api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+        response = self._client.get(
+            url,
+            params={**request_payload, "signature": signature},
+            headers={
+                "X-MBX-APIKEY": self._api_key,
             },
         )
         response.raise_for_status()

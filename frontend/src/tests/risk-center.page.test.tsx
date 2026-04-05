@@ -6,6 +6,23 @@ import { renderWithProviders } from "./render-with-providers";
 test("risk center page loads execution summary", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.startsWith("/api/v1/algo/reconciliation/candidates")) {
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              trade_id: "recon-1",
+              symbol: "BTCUSDT",
+              missing_order_ids: ["spot-1", "perp-2"],
+              suggested_action: "inspect_exchange",
+              needs_attention: true,
+            },
+          ],
+        }),
+      } as Response;
+    }
+
     if (!url.startsWith("/api/v1/algo/execution/summary")) {
       return {
         ok: false,
@@ -66,5 +83,11 @@ test("risk center page loads execution summary", async () => {
   await waitFor(() => expect(screen.getByText("GUARDED")).toBeTruthy());
   expect(screen.getByText("Recovery required")).toBeTruthy();
   expect(screen.getByText("execution.recovery.required")).toBeTruthy();
+  await waitFor(() => expect(screen.getByText("recon-1")).toBeTruthy());
+  expect(screen.getByText("BTCUSDT")).toBeTruthy();
+  expect(screen.getByText("spot-1, perp-2")).toBeTruthy();
+  expect(screen.getByText("inspect_exchange")).toBeTruthy();
+  expect(screen.getByText("是")).toBeTruthy();
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=6");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates");
 });

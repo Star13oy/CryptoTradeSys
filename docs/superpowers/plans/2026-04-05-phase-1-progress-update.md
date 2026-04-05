@@ -23,6 +23,11 @@
 8. 已补上 `hedge manager` 读模型，能够对活跃交易给出 `healthy / monitoring / rebalance_required / recovery_required` 分类。
 9. 已补上 hedge rebalance plan 接口，能把暴露偏移转换成明确的再平衡建议动作。
 10. 已补上 reconciliation 底座，可导入交易所订单回报并对照 live ledger + execution audit 做摘要对账。
+11. 已补上可配置持久化后端，默认仍可走 JSON，本地开发也可切到 MySQL 承接 tuning state、samples、journal、datasets、ledger、audit、exchange reports。
+12. 已补上 `JSON -> MySQL` 回填工具，可把现有本地 JSON 历史状态幂等迁移到 MySQL。
+13. 已补上 reconciliation candidates 读接口，可直接看到每笔 live trade 的预期订单、已回报订单、缺失腿和建议动作。
+14. 已补上基于 `trade_id` 的 authenticated reconciliation sync，可主动向 Binance 拉 spot/perp 订单状态并回写 exchange reports。
+15. 已补上 attention queue 级别的 reconciliation 批量 sync，可按优先级拉取最需要关注的一批 live trade 订单状态。
 
 ## What Is Implemented
 
@@ -102,6 +107,12 @@
 14. 已支持 hedge overview API，可按 `exposure_limit_bps` 对活跃交易做暴露偏移判定，为持仓监控和风险页面提供稳定后端合同。
 15. 已支持 hedge rebalance plan API，可把净暴露转成 `increase_perp_hedge / reduce_perp_hedge / recover_trade / monitor_only` 建议。
 16. 已支持 reconciliation reports 导入、列表和 summary API，可识别 `missing_exchange_report` 与 `status_mismatch` 两类基础问题。
+17. 已支持 `storage_backend=mysql` 的持久化路径，并通过 opt-in MySQL 集成测试验证单例状态、账本与回测数据集三类核心存储语义。
+18. 已支持 `/api/v1/algo/persistence/backfill-json`，能对 tuning state、samples、journal、datasets、ledger、audit、exchange order reports 做幂等回填摘要。
+19. 已支持 `/api/v1/algo/reconciliation/candidates`，可供风控/审计/执行台直接展示待对账上下文。
+20. 已支持 `/api/v1/algo/reconciliation/sync/{trade_id}`，用已存在的 live audit 上下文推导预期订单并拉取交易所最新状态。
+21. 已支持 `/api/v1/algo/reconciliation/sync?limit=N`，可对当前 attention candidates 做受控批量同步。
+22. 风控中心页面已接上 `/api/v1/algo/reconciliation/candidates`，能直接展示待对账候选、缺失订单与建议动作。
 
 ## Real Progress Against The Original Design
 
@@ -118,6 +129,7 @@
 9. `Portfolio Hedge Manager` 的第一版读模型
 10. `Portfolio Hedge Manager` 的第一版再平衡建议接口
 11. `Execution Reconciliation` 的第一版回报导入与差异识别接口
+12. 可选 MySQL 持久化底座
 
 ### 仍然是主要缺口的模块
 
@@ -127,12 +139,14 @@
 4. 更完整的历史数据仓库与自动采集
 5. live risk / rebalance / recovery 进程
 6. 自适应建议包的前端工作台联调
+7. 守护进程化的自动抓取交易所订单回报，减少人工或手动触发 reconciliation sync 的步骤
+8. 更细的事务边界与 outbox/inbox 可靠投递
 
 ## Verification Snapshot
 
 ### Backend
 
-- Full backend suite: `73 passed`
+- Full backend suite with MySQL slice enabled: `87 passed`
 
 覆盖范围包括：
 
@@ -159,6 +173,11 @@
 21. hedge manager read service / API
 22. hedge rebalance planning API
 23. reconciliation store / service / API
+24. MySQL persistence backend integration
+25. JSON -> MySQL backfill service / API
+26. reconciliation candidate read model / API
+27. authenticated reconciliation sync via Binance order query
+28. attention-queue reconciliation batch sync
 
 ### Frontend
 
@@ -184,6 +203,8 @@
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
 3. 把 `adaptation/backtest/ledger/execution/hedge/reconciliation` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控 / 风控中心`。
 4. 再往下推进真实交易所回报抓取、hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
+5. 把已落地的 attention-queue 批量 sync 继续推进成定时/守护进程化的交易所回报抓取。
+6. 再补更严格的事务/补偿边界。
 
 ## Practical Note
 

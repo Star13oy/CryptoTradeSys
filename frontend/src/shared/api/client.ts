@@ -40,9 +40,16 @@ type ExecutionSummaryParams = {
   limit_incidents?: number;
 };
 
+type ReconciliationCandidatesParams = {
+  symbol?: string;
+  only_attention?: boolean;
+};
+
 export const apiClient = {
   getHedgeOverview: <T>(params?: HedgeOverviewParams) => apiGet<T>("/api/v1/algo/hedge/overview", params),
   getHedgeRebalancePlan: <T>(tradeId: string, params?: HedgeRebalancePlanParams) =>
     apiGet<T>(`/api/v1/algo/hedge/rebalance-plan/${encodeURIComponent(tradeId)}`, params),
   getExecutionSummary: <T>(params?: ExecutionSummaryParams) => apiGet<T>("/api/v1/algo/execution/summary", params),
+  getReconciliationCandidates: <T>(params?: ReconciliationCandidatesParams) =>
+    apiGet<T>("/api/v1/algo/reconciliation/candidates", params),
 };

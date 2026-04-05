@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../../shared/api/client";
-import type { ExecutionSummaryResponse } from "../../shared/contracts/console";
+import type { ExecutionSummaryResponse, ReconciliationCandidateListResponse } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
 function buildRiskLevel(summary: ExecutionSummaryResponse | undefined) {
@@ -27,10 +27,18 @@ function statusCount(summary: ExecutionSummaryResponse | undefined, status: stri
   return summary?.status_counts.find((item) => item.status === status)?.count ?? 0;
 }
 
+function formatMissingOrderIds(missingOrderIds: string[]) {
+  return missingOrderIds.length > 0 ? missingOrderIds.join(", ") : "—";
+}
+
 export function RiskCenterPage() {
   const summaryQuery = useQuery({
     queryKey: ["execution-summary", 6],
     queryFn: () => apiClient.getExecutionSummary<ExecutionSummaryResponse>({ limit_incidents: 6 }),
+  });
+  const candidatesQuery = useQuery({
+    queryKey: ["reconciliation-candidates"],
+    queryFn: () => apiClient.getReconciliationCandidates<ReconciliationCandidateListResponse>(),
   });
 
   const summary = summaryQuery.data;
@@ -81,6 +89,15 @@ export function RiskCenterPage() {
       tone: riskLevel.label === "CRITICAL" ? "danger" : riskLevel.label === "GUARDED" ? "warning" : "accent",
     },
   ];
+  const reconciliationCandidates = candidatesQuery.data?.candidates ?? [];
+  const candidateRows = reconciliationCandidates.map((item) => [
+      item.trade_id,
+      item.symbol,
+      formatMissingOrderIds(item.missing_order_ids),
+      item.suggested_action,
+      item.needs_attention ? "是" : "否",
+      item.needs_attention ? "danger" : "accent",
+    ]);
   const rules = summary?.recent_incidents.map((item) => [
     item.severity === "critical" ? "关键事故" : item.severity === "error" ? "执行异常" : "告警事件",
     item.event_type,
@@ -95,6 +112,9 @@ export function RiskCenterPage() {
     <>
       <span>RISK LEVEL / {riskLevel.label}</span>
       <span>{summary ? `恢复队列 ${summary.recovery_queue.length} 笔` : "等待执行摘要同步"}</span>
+      <span>
+        {candidatesQuery.data ? `对账候选 ${reconciliationCandidates.length} 笔` : "等待对账候选同步"}
+      </span>
       <span>{summaryQuery.isError ? "执行摘要异常" : "EXECUTION SUMMARY ONLINE"}</span>
     </>
   );
@@ -190,6 +210,8 @@ export function RiskCenterPage() {
 
             {summaryQuery.isPending ? <p className="panel-state">正在同步执行风险摘要</p> : null}
             {summaryQuery.isError ? <p className="panel-alert">执行风险摘要暂时不可用</p> : null}
+            {candidatesQuery.isPending ? <p className="panel-state panel-state-subtle">正在同步对账候选项</p> : null}
+            {candidatesQuery.isError ? <p className="panel-alert">对账候选项暂时不可用</p> : null}
 
             <div className="proto-threshold-grid">
               {thresholdRows.map((row) => (
@@ -205,6 +227,43 @@ export function RiskCenterPage() {
                     <span>{row.min}</span>
                     <span>{row.max}</span>
                   </div>
+                </div>
+                ))}
+            </div>
+
+            <div className="proto-panel__header proto-panel__header--spaced">
+              <div>
+                <p className="proto-panel__eyebrow">Reconciliation Candidates</p>
+                <h3>对账候选项</h3>
+              </div>
+              <span className="proto-chip proto-chip--active">自动接入</span>
+            </div>
+
+            <div className="proto-table-shell">
+              <div
+                className="proto-table-row proto-table-row--risk proto-table-row--head"
+                style={{ gridTemplateColumns: "1fr 0.9fr 1.4fr 1fr 0.7fr" }}
+              >
+                <span>交易 ID</span>
+                <span>交易对</span>
+                <span>缺失订单</span>
+                <span>建议动作</span>
+                <span>需关注</span>
+              </div>
+              {!candidatesQuery.isPending && !candidatesQuery.isError && candidateRows.length === 0 ? (
+                <div className="table-empty">暂无需要对账的候选项</div>
+              ) : null}
+              {candidateRows.map(([tradeId, symbol, missingOrderIds, suggestedAction, needsAttention, tone]) => (
+                <div
+                  className="proto-table-row proto-table-row--risk"
+                  key={tradeId}
+                  style={{ gridTemplateColumns: "1fr 0.9fr 1.4fr 1fr 0.7fr" }}
+                >
+                  <strong>{tradeId}</strong>
+                  <span>{symbol}</span>
+                  <span>{missingOrderIds}</span>
+                  <span className="proto-pill">{suggestedAction}</span>
+                  <span className={`proto-pill proto-text--${tone}`}>{needsAttention}</span>
                 </div>
               ))}
             </div>

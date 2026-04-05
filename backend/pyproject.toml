@@ -11,6 +11,7 @@ dependencies = [
   "uvicorn[standard]>=0.30,<1",
   "pydantic-settings>=2.6,<3",
   "httpx>=0.28,<1",
+  "PyMySQL>=1.1,<2",
 ]
 
 [project.optional-dependencies]
@@ -19,3 +20,7 @@ dev = ["pytest>=8,<9"]
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
 addopts = "-p no:cacheprovider"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["backend*", "tests*"]

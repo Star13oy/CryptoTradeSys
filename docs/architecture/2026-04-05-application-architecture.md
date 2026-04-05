@@ -21,7 +21,7 @@
 
 - 包含：
   - `frontend`：控制台 UI（7 页路由，其中 4 页接真实后端数据）
-  - `backend`：FastAPI 服务、策略/风控/回测/调参、执行编排、JSON 持久化
+  - `backend`：FastAPI 服务、策略/风控/回测/调参、执行编排、可配置 JSON/MySQL 持久化
   - 与 Binance 公共/签名 API 的对接客户端
 - 不包含：
   - 持仓级真实状态机与自动化再平衡执行
@@ -35,7 +35,9 @@
 
 1. 前端（React + Vite）通过 `/api` 代理访问后端 HTTP 接口。
 2. 后端（FastAPI）在进程内组织领域模块（行情、策略、风险、回测、调参、执行）。
-3. 持久化以本地 JSON 文件为主（`backend/runtime/*.json`）。
+3. 持久化当前支持两类后端：
+   - 默认本地 JSON 文件（`backend/runtime/*.json`）
+   - 可选本地 MySQL（表按需自动创建）
 4. 外部依赖主要是 Binance（公共行情 + 签名下单）。
 
 这意味着当前架构优先“可验证功能闭环”与“低复杂度迭代”，而非分布式高可用。
@@ -62,9 +64,10 @@
 - `execution/service.py`：执行编排、幂等、故障恢复流程
 - `execution/read_service.py`：执行看板读模型（状态统计/恢复队列/事故）
 - `hedge/service.py`：持仓健康分类与再平衡建议
-- `reconciliation/service.py`：交易所回报导入后的账本/审计对账摘要
+- `reconciliation/service.py`：交易所回报导入后的账本/审计对账摘要、candidate read model 与按 trade / attention queue 同步入口
 - `backtest/engine.py` + `backtest/dataset_service.py`：回测执行与数据集重放
 - `journal/service.py`、`ledger/service.py`、`audit/service.py`：记录写入与查询封装
+- `persistence/migration.py`：JSON -> MySQL 回填编排
 
 ### 3.3 领域逻辑层（Domain）
 
@@ -77,7 +80,9 @@
 
 - `exchange/binance_public.py`：公共行情 HTTP 调用
 - `exchange/binance_trading.py`：签名下单客户端
-- `*/store.py`：文件持久化（JSON）
+- `persistence/mysql.py`：MySQL 连接、建库建表与 JSON payload 持久化辅助
+- `persistence/migration.py`：JSON 文件到 MySQL 的幂等回填服务
+- `*/store.py`：按 `storage_backend` 选择 JSON 文件或 MySQL 持久化
 - `core/settings.py`：运行参数与环境变量配置
 
 ## 4. 核心数据流
@@ -143,6 +148,42 @@
 5. `/api/v1/algo/reconciliation/summary` 把 imported exchange reports 与 live ledger + execution audit 对照，识别：
    - `missing_exchange_report`
    - `status_mismatch`
+6. `/api/v1/algo/reconciliation/candidates` 输出 trade-centric 待对账上下文，暴露：
+   - 预期订单 ID
+   - 已回报订单 ID
+   - 缺失订单 ID
+   - 最近执行事件时间
+   - 最近交易所回报时间
+   - 建议动作
+7. `/api/v1/algo/reconciliation/sync/{trade_id}` 基于已存在的 live audit context 推导预期订单，并调用 authenticated Binance client 拉取 spot/perp 最新订单状态，再回写 `exchange_order_reports`。
+8. `/api/v1/algo/reconciliation/sync?limit=N` 以 `needs_attention` 候选为输入，按优先级批量触发受控同步，作为后续 daemon 化的过渡形态。
+
+## 4.6 JSON -> MySQL 回填链路
+
+1. 当 `storage_backend=mysql` 启用后，可调用 `/api/v1/algo/persistence/backfill-json`。
+2. 回填服务直接读取 `settings` 当前指向的 JSON 文件。
+3. 每类数据按 Pydantic 模型规范化后，与当前 MySQL 已有 payload 做幂等比较。
+4. 只写入未导入 payload，避免重复回填。
+5. 当前覆盖：
+   - tuning state
+   - learning samples
+   - trade journal
+   - backtest datasets
+   - trade ledger
+   - audit events
+   - exchange order reports
+
+## 4.7 Authenticated Reconciliation Sync
+
+1. `reconciliation/sync/{trade_id}` 从 ledger 确认该交易存在且为 `live`。
+2. 再从 execution audit 事件中提取该交易的 `orderId/clientOrderId` 与腿信息（spot/perp）。
+3. 对每个预期订单调用：
+   - `BinanceTradingClient.get_spot_order`
+   - `BinanceTradingClient.get_perp_order`
+4. 将交易所返回统一规整成 `ExchangeOrderReport`。
+5. 通过 `order_id` 维度做 upsert，避免重复 sync 时不断追加旧快照。
+
+这一步把 reconciliation 从“完全依赖人工导入回报”推进到了“可以针对单笔交易或高优先级 attention queue 主动拉真实状态”。当前仍未实现定时守护进程化自动同步。
 
 ## 5. 运行模式：paper vs live
 
@@ -192,7 +233,11 @@
 
 ## 7. 关键持久化设计（当前）
 
-当前为文件持久化，路径可由环境变量覆盖，默认在 `backend/runtime/`：
+当前已经具备“双后端”持久化能力：
+
+### 7.1 JSON 后端
+
+路径可由环境变量覆盖，默认在 `backend/runtime/`：
 
 - `tuning-state.json`：当前激活调参包与配置
 - `learning-samples.json`：学习样本
@@ -206,6 +251,37 @@
 
 - 优点：轻量、可读、便于本地与测试快速迭代
 - 限制：不适合高并发、多实例一致性与强事务场景
+
+### 7.2 MySQL 后端
+
+通过 `FUNDING_ARB_STORAGE_BACKEND=mysql` 启用，关键连接参数包括：
+
+- `FUNDING_ARB_MYSQL_HOST`
+- `FUNDING_ARB_MYSQL_PORT`
+- `FUNDING_ARB_MYSQL_USER`
+- `FUNDING_ARB_MYSQL_PASSWORD`
+- `FUNDING_ARB_MYSQL_DATABASE`
+
+当前已支持的 MySQL 表包括：
+
+- `tuning_state`
+- `learning_samples`
+- `trade_journal`
+- `backtest_datasets`
+- `trade_ledger`
+- `audit_events`
+- `exchange_order_reports`
+
+设计特点：
+
+- 仍保留 Pydantic payload JSON，尽量不打断现有服务合同
+- 同时抽取关键检索列（如 `trade_id`、`symbol`、`status`、`occurred_at`）方便后续查询与索引
+- 表由应用在首次访问时自动创建，适合当前单机 Phase 1
+- 可通过回填服务把已有 JSON 状态迁到 MySQL，且重复执行不会重复导入相同 payload
+
+当前限制：
+
+- 还没有更强事务边界、outbox/inbox、消息队列与多实例一致性设计
 
 ## 8. 外部依赖与接口边界
 
@@ -238,9 +314,11 @@
 - 回测执行、数据集导入/列表/重放
 - 样本导入、交易日志抽取、调参推荐与手动确认应用
 - 统一 ledger + audit + journal 文件持久化
+- 可选 MySQL 持久化底座，已覆盖 tuning/sample/journal/dataset/ledger/audit/reconciliation report
+- JSON -> MySQL 回填工具与最小 API 入口
 - 执行编排（paper + live 基础适配）、幂等重放、恢复接口
 - 执行读侧摘要 API
-- hedge manager 读模型、再平衡建议接口与 reconciliation 摘要
+- hedge manager 读模型、再平衡建议接口、reconciliation 摘要、candidate read model 与 trade-level / batch exchange sync
 - 前端 7 页路由框架与其中 4 页真实后端接入
 
 ## 9.2 未实现或未闭环
@@ -253,7 +331,7 @@
 - 自动化守护进程（巡检、熔断、恢复 worker）
 - 前端对回测/模型/持仓/风控/审计/执行摘要接口的完整对接
 - 认证鉴权、权限、操作审计增强
-- 数据库/消息队列等生产基础设施替换 JSON 存储
+- 批量/自动回报抓取、更严格的事务边界、消息队列与多实例一致性保障
 
 ## 10. 新成员上手建议（基于当前阶段）
 
@@ -265,4 +343,4 @@
 ---
 
 如需进入下一阶段（生产化），建议优先推进：  
-`执行可靠性闭环 > 前端全链路接入 > 持久化升级（DB）> 守护进程化`。
+`执行可靠性闭环 > 前端全链路接入 > MySQL 迁移/事务强化 > 守护进程化`。

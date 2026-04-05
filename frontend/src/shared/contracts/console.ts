@@ -92,6 +92,26 @@ export type HedgeRebalancePlan = {
   notes: string;
 };
 
+export type ReconciliationSuggestedAction = "none" | "inspect_exchange" | "resume_open" | "resume_close";
+
+export type ReconciliationCandidate = {
+  trade_id: string;
+  symbol: string;
+  local_status: string;
+  expected_order_ids: string[];
+  reported_order_ids: string[];
+  missing_order_ids: string[];
+  exchange_statuses: string[];
+  latest_event_at: string | null;
+  latest_report_at: string | null;
+  suggested_action: ReconciliationSuggestedAction;
+  needs_attention: boolean;
+};
+
+export type ReconciliationCandidateListResponse = {
+  candidates: ReconciliationCandidate[];
+};
+
 export type ExecutionStatusCount = {
   status: string;
   count: number;
@@ -125,4 +145,22 @@ export type ExecutionSummaryResponse = {
   status_counts: ExecutionStatusCount[];
   recovery_queue: ExecutionRecoveryQueueItem[];
   recent_incidents: ExecutionIncident[];
+};
+
+export type ReconciliationCandidate = {
+  trade_id: string;
+  symbol: string;
+  local_status: string;
+  expected_order_ids: string[];
+  reported_order_ids: string[];
+  missing_order_ids: string[];
+  exchange_statuses: string[];
+  latest_event_at: string | null;
+  latest_report_at: string | null;
+  suggested_action: string;
+  needs_attention: boolean;
+};
+
+export type ReconciliationCandidateListResponse = {
+  candidates: ReconciliationCandidate[];
 };

@@ -1,4 +1,6 @@
 from .schemas import (
+    ReconciliationCandidate,
+    ReconciliationCandidateListResponse,
     ExchangeOrderReport,
     ExchangeOrderReportImportRequest,
     ExchangeOrderReportImportResponse,
@@ -15,6 +17,8 @@ __all__ = [
     "ExchangeOrderReportImportResponse",
     "ExchangeOrderReportListResponse",
     "ExchangeOrderReportStore",
+    "ReconciliationCandidate",
+    "ReconciliationCandidateListResponse",
     "ReconciliationIssue",
     "ReconciliationService",
     "ReconciliationSummary",

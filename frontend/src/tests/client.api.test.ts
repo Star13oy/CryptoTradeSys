@@ -41,3 +41,17 @@ test("api client requests execution summary with incident limit", async () => {
 
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=8");
 });
+
+test("api client requests reconciliation candidates", async () => {
+  const fetchMock = vi.fn(async () =>
+    ({
+      ok: true,
+      json: async () => ({ candidates: [] }),
+    }) as Response
+  );
+  (globalThis as { fetch: typeof fetch }).fetch = fetchMock as typeof fetch;
+
+  await apiClient.getReconciliationCandidates();
+
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates");
+});
