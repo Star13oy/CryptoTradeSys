@@ -22,6 +22,7 @@
 6. 已补充交易账本提取器，可把 completed trade journal records 稳定地转换为学习样本，并支持按 symbol 和最近 N 条过滤。
 7. 已补充第一版历史回测数据集仓库，支持导入、列出、按数据集回放，以及用历史数据集对 tuning package 做预验证。
 8. 已补充第一版 execution orchestrator，能把 `open_hedge / close_hedge` 意图转成确定性的 ledger 状态迁移与审计事件流，为后续 live adapter 铺底。
+9. 已补充 authenticated Binance trading client 与 live adapter 边界，系统已有真实签名下单的代码入口，但尚未完成白名单实盘联调与恢复策略验证。
 
 这意味着设计文档中的大量模块已不再只是目标，而是需要继续向“真实执行闭环”和“历史数据驱动优化”延展。
 

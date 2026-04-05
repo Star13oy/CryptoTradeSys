@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -19,10 +19,18 @@ class ExecutionIntentRequest(BaseModel):
     action: ExecutionAction
     spot_notional: float = Field(default=0.0, ge=0.0)
     perp_notional: float = Field(default=0.0, ge=0.0)
+    spot_quantity: float | None = None
+    perp_quantity: float | None = None
     realized_pnl: float = 0.0
     net_exposure: float | None = None
     notes: str | None = None
     simulate_perp_leg_failure: bool = False
+
+
+class ExecutionLegReport(BaseModel):
+    leg: Literal["spot", "perp"]
+    status: Literal["submitted", "filled", "failed"]
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExecutionResult(BaseModel):

@@ -8,7 +8,12 @@ from app.audit import (
     AuditEventService,
     AuditEventStore,
 )
-from app.execution import ExecutionIntentRequest, ExecutionOrchestrator, ExecutionResult
+from app.execution import (
+    BinanceLiveExecutionAdapter,
+    ExecutionIntentRequest,
+    ExecutionOrchestrator,
+    ExecutionResult,
+)
 from app.backtest import (
     BacktestDataset,
     BacktestDatasetService,
@@ -16,6 +21,7 @@ from app.backtest import (
     BacktestEngine,
     BacktestResult,
 )
+from app.exchange.binance_trading import BinanceTradingClient
 from app.core.settings import get_settings
 from app.journal import TradeJournalService
 from app.journal.schemas import (
@@ -84,7 +90,11 @@ def get_execution_orchestrator(
     ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
     audit_service: AuditEventService = Depends(get_audit_event_service),
 ) -> ExecutionOrchestrator:
-    return ExecutionOrchestrator(ledger_service, audit_service)
+    settings = get_settings()
+    live_adapter = None
+    if settings.binance_api_key and settings.binance_api_secret:
+        live_adapter = BinanceLiveExecutionAdapter(BinanceTradingClient())
+    return ExecutionOrchestrator(ledger_service, audit_service, live_adapter=live_adapter)
 
 
 @router.post("/risk/evaluate", response_model=RiskDecision)

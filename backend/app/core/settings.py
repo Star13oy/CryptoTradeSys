@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     exchange_name: str = "binance"
     binance_perp_base_url: str = "https://fapi.binance.com"
     binance_spot_base_url: str = "https://api.binance.com"
+    binance_api_key: str = ""
+    binance_api_secret: str = ""
     scan_limit: int = 25
     tuning_state_path: str = "backend/runtime/tuning-state.json"
     learning_sample_path: str = "backend/runtime/learning-samples.json"

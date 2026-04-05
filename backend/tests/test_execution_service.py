@@ -2,7 +2,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.audit import AuditEventService, AuditEventStore
-from app.execution import ExecutionIntentRequest, ExecutionOrchestrator
+from app.execution import ExecutionIntentRequest, ExecutionLegReport, ExecutionOrchestrator
 from app.ledger import TradeLedgerService, TradeLedgerStore
 
 
@@ -105,3 +105,40 @@ def test_execution_service_closes_existing_trade() -> None:
     assert record.status == "closed"
     assert record.realized_pnl == 18.5
     assert record.closed_at is not None
+
+
+def test_execution_service_live_mode_uses_adapter_reports() -> None:
+    class StubLiveAdapter:
+        def open_hedge(self, request: ExecutionIntentRequest) -> list[ExecutionLegReport]:
+            return [
+                ExecutionLegReport(leg="spot", status="filled", payload={"orderId": "spot-1"}),
+                ExecutionLegReport(leg="perp", status="filled", payload={"orderId": "perp-1"}),
+            ]
+
+        def close_hedge(self, request: ExecutionIntentRequest, existing) -> list[ExecutionLegReport]:
+            raise NotImplementedError
+
+    ledger_service = TradeLedgerService(TradeLedgerStore(make_path("ledger-live")))
+    audit_service = AuditEventService(AuditEventStore(make_path("audit-live")))
+    orchestrator = ExecutionOrchestrator(ledger_service, audit_service, live_adapter=StubLiveAdapter())
+
+    result = orchestrator.execute(
+        ExecutionIntentRequest(
+            trade_id="exec-live-1",
+            mode="live",
+            strategy_id="funding-arb",
+            symbol="BTCUSDT",
+            action="open_hedge",
+            spot_notional=15000,
+            perp_notional=14980,
+            perp_quantity=0.25,
+        )
+    )
+
+    assert result.status == "hedged"
+    events = audit_service.list_events(source="execution-orchestrator")
+    assert [event.event_type for event in events][-3:] == [
+        "execution.live.spot.filled",
+        "execution.live.perp.filled",
+        "execution.completed",
+    ]

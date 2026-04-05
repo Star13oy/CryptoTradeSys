@@ -27,8 +27,9 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 10. Shared trade ledger storage with import/list/filter support for `paper` and `live` records.
 11. Audit event storage with import/list/filter support for risk, execution, and recovery events.
 12. A first execution orchestrator that turns `open_hedge / close_hedge` intents into deterministic state transitions, ledger writes, and audit events.
-13. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
-14. Seven console pages aligned to the Stitch project:
+13. A first authenticated Binance trading client plus live execution adapter boundary for signed spot/perp market orders.
+14. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
+15. Seven console pages aligned to the Stitch project:
    - `总览指挥台`
    - `机会扫描页`
    - `持仓监控`
@@ -76,6 +77,7 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 - `backend/app/ledger/`: shared paper/live trade ledger
 - `backend/app/audit/`: event audit persistence and query surface
 - `backend/app/execution/`: execution intent orchestration and state transitions
+- `backend/app/exchange/binance_trading.py`: authenticated Binance trading client for signed order placement
 
 ## Project Structure
 
@@ -88,7 +90,7 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 
 Latest verified status in this worktree:
 
-1. Full backend suite: `53 passed`
+1. Full backend suite: `55 passed`
 2. Frontend was previously passing and buildable before the backend-focused slice:
    - `vitest`: passed
    - `vite build`: passed
@@ -122,7 +124,7 @@ npm run dev
 
 This repository still stops short of a true production trading loop. The next major gaps are:
 
-1. Real authenticated Binance execution adapters behind the current orchestrator.
+1. Real authenticated Binance execution adapters are now scaffolded, but still need safe production rollout, retry policy, and partial-fill recovery against live exchange behavior.
 2. Position ledger enrichment and hedge manager logic on top of the current shared trade ledger.
 3. Authenticated ingestion / sync for richer historical market + trade data instead of manual dataset import.
 4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls.

@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from app.audit import AuditEventRecord, AuditEventService
 from app.ledger import TradeLedgerRecord, TradeLedgerService
 
-from .schemas import ExecutionIntentRequest, ExecutionResult
+from .adapters import BinanceLiveExecutionAdapter
+from .schemas import ExecutionIntentRequest, ExecutionLegReport, ExecutionResult
 
 
 class ExecutionOrchestrator:
@@ -13,15 +14,26 @@ class ExecutionOrchestrator:
         self,
         ledger_service: TradeLedgerService | None = None,
         audit_service: AuditEventService | None = None,
+        live_adapter: BinanceLiveExecutionAdapter | None = None,
     ) -> None:
         self._ledger_service = ledger_service or TradeLedgerService()
         self._audit_service = audit_service or AuditEventService()
+        self._live_adapter = live_adapter
 
     def execute(self, request: ExecutionIntentRequest) -> ExecutionResult:
         occurred_at = datetime.now(timezone.utc)
+        if request.mode == "live":
+            return self._execute_live(request, occurred_at)
         if request.action == "open_hedge":
             return self._execute_open(request, occurred_at)
         return self._execute_close(request, occurred_at)
+
+    def _execute_live(self, request: ExecutionIntentRequest, base_time: datetime) -> ExecutionResult:
+        if self._live_adapter is None:
+            raise ValueError("live execution adapter is not configured")
+        if request.action == "open_hedge":
+            return self._execute_live_open(request, base_time)
+        return self._execute_live_close(request, base_time)
 
     def _execute_open(self, request: ExecutionIntentRequest, base_time: datetime) -> ExecutionResult:
         events: list[AuditEventRecord] = []
@@ -198,6 +210,145 @@ class ExecutionOrchestrator:
             executed_at=base_time + timedelta(milliseconds=2),
         )
 
+    def _execute_live_open(self, request: ExecutionIntentRequest, base_time: datetime) -> ExecutionResult:
+        events: list[AuditEventRecord] = []
+        events.append(
+            self._record_event(
+                event_type="execution.intent.received",
+                summary=f"Received {request.action} intent for {request.symbol}",
+                occurred_at=base_time,
+                payload=request.model_dump(mode="json"),
+                tags=["execution", request.mode, request.action],
+            )
+        )
+        record = TradeLedgerRecord(
+            trade_id=request.trade_id,
+            mode=request.mode,
+            strategy_id=request.strategy_id,
+            symbol=request.symbol,
+            status="candidate",
+            opened_at=base_time,
+            net_exposure=self._resolve_net_exposure(request),
+            spot_notional=request.spot_notional,
+            perp_notional=request.perp_notional,
+            realized_pnl=0.0,
+            notes=request.notes,
+        )
+        self._ledger_service.save_record(record)
+
+        reports = self._live_adapter.open_hedge(request)
+        for index, report in enumerate(reports, start=1):
+            events.append(self._record_live_leg_event(request.trade_id, report, base_time + timedelta(milliseconds=index)))
+
+        failed = any(report.status == "failed" for report in reports)
+        final_status = "failed" if failed else "hedged"
+        record = record.model_copy(update={"status": final_status})
+        self._ledger_service.save_record(record)
+        if failed:
+            events.append(
+                self._record_event(
+                    event_type="execution.recovery.required",
+                    summary=f"Recovery required after live partial failure on {request.symbol}",
+                    severity="critical",
+                    occurred_at=base_time + timedelta(milliseconds=len(reports) + 1),
+                    payload={"trade_id": request.trade_id, "status": "failed"},
+                    tags=["execution", "recovery", request.mode],
+                )
+            )
+            executed_at = base_time + timedelta(milliseconds=len(reports) + 1)
+        else:
+            events.append(
+                self._record_event(
+                    event_type="execution.completed",
+                    summary=f"Hedge open completed for {request.symbol}",
+                    occurred_at=base_time + timedelta(milliseconds=len(reports) + 1),
+                    payload={"trade_id": request.trade_id, "status": "hedged"},
+                    tags=["execution", "completed", request.mode],
+                )
+            )
+            executed_at = base_time + timedelta(milliseconds=len(reports) + 1)
+        return ExecutionResult(
+            trade_id=request.trade_id,
+            action=request.action,
+            mode=request.mode,
+            symbol=request.symbol,
+            status=final_status,
+            ledger_record=record,
+            events=events,
+            executed_at=executed_at,
+        )
+
+    def _execute_live_close(self, request: ExecutionIntentRequest, base_time: datetime) -> ExecutionResult:
+        existing = self._ledger_service.get_record(request.trade_id)
+        if existing is None:
+            raise ValueError(f"trade '{request.trade_id}' not found in ledger")
+
+        events: list[AuditEventRecord] = []
+        events.append(
+            self._record_event(
+                event_type="execution.intent.received",
+                summary=f"Received {request.action} intent for {request.symbol}",
+                occurred_at=base_time,
+                payload=request.model_dump(mode="json"),
+                tags=["execution", request.mode, request.action],
+            )
+        )
+        closing = existing.model_copy(update={"status": "closing"})
+        self._ledger_service.save_record(closing)
+        reports = self._live_adapter.close_hedge(request, existing)
+        for index, report in enumerate(reports, start=1):
+            events.append(
+                self._record_live_leg_event(
+                    request.trade_id,
+                    report,
+                    base_time + timedelta(milliseconds=index),
+                    prefix="execution.live.close",
+                )
+            )
+
+        failed = any(report.status == "failed" for report in reports)
+        final_status = "failed" if failed else "closed"
+        closed = closing.model_copy(
+            update={
+                "status": final_status,
+                "closed_at": None if failed else base_time + timedelta(milliseconds=len(reports) + 1),
+                "realized_pnl": request.realized_pnl,
+                "notes": request.notes or closing.notes,
+            }
+        )
+        self._ledger_service.save_record(closed)
+        if failed:
+            events.append(
+                self._record_event(
+                    event_type="execution.recovery.required",
+                    summary=f"Recovery required after live close failure on {request.symbol}",
+                    severity="critical",
+                    occurred_at=base_time + timedelta(milliseconds=len(reports) + 1),
+                    payload={"trade_id": request.trade_id, "status": "failed"},
+                    tags=["execution", "recovery", request.mode],
+                )
+            )
+        else:
+            events.append(
+                self._record_event(
+                    event_type="execution.close.completed",
+                    summary=f"Close completed for {request.symbol}",
+                    occurred_at=base_time + timedelta(milliseconds=len(reports) + 1),
+                    payload={"trade_id": request.trade_id, "realized_pnl": request.realized_pnl},
+                    tags=["execution", "close", "completed", request.mode],
+                )
+            )
+        return ExecutionResult(
+            trade_id=request.trade_id,
+            action=request.action,
+            mode=request.mode,
+            symbol=request.symbol,
+            status=final_status,
+            ledger_record=closed,
+            events=events,
+            executed_at=base_time + timedelta(milliseconds=len(reports) + 1),
+        )
+
     def _record_event(
         self,
         *,
@@ -216,6 +367,23 @@ class ExecutionOrchestrator:
             occurred_at=occurred_at,
             payload=payload,
             tags=tags,
+        )
+
+    def _record_live_leg_event(
+        self,
+        trade_id: str,
+        report: ExecutionLegReport,
+        occurred_at: datetime,
+        *,
+        prefix: str = "execution.live",
+    ) -> AuditEventRecord:
+        return self._record_event(
+            event_type=f"{prefix}.{report.leg}.{report.status}",
+            summary=f"Live {report.leg} leg {report.status}",
+            occurred_at=occurred_at,
+            payload={"trade_id": trade_id, **report.payload},
+            tags=["execution", "live", report.leg, report.status],
+            severity="error" if report.status == "failed" else "info",
         )
 
     def _resolve_net_exposure(self, request: ExecutionIntentRequest) -> float:
