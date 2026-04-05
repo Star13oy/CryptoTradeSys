@@ -1,56 +1,138 @@
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+
+import { apiClient } from "../../shared/api/client";
+import type { HedgeOverviewItem, HedgeOverviewResponse, HedgeRebalancePlan } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
-const overviewCards = [
-  { label: "当前持仓数", value: "12", hint: "+2 从昨日" },
-  { label: "总名义仓位", value: "$1,428,902.50", hint: "USDT 结算" },
-  { label: "未实现收益 (uPnL)", value: "+$14,204.12", hint: "+3.14%" },
-];
+const timeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
 
-const hedgeRows = [
-  {
-    symbol: "BTC/USDT",
-    venue: "永续合约 / Binance",
-    divergence: "0.82%",
-    divergenceWidth: "82%",
-    leverage: "10.0x",
-    funding: "0.0100%",
-    takeProfit: "68,240.50",
-    stopLoss: "62,100.00",
-  },
-  {
-    symbol: "ETH/USDT",
-    venue: "永续合约 / OKX",
-    divergence: "1.45%",
-    divergenceWidth: "45%",
-    leverage: "5.0x",
-    funding: "-0.0024%",
-    takeProfit: "2,640.00",
-    stopLoss: "2,320.50",
-  },
-  {
-    symbol: "SOL/USDT",
-    venue: "永续合约 / Binance",
-    divergence: "0.12%",
-    divergenceWidth: "12%",
-    leverage: "20.0x",
-    funding: "0.0000%",
-    takeProfit: "158.20",
-    stopLoss: "132.00",
-  },
-];
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
 
-const exitConditions = [
-  { title: "目标基差偏离", status: "触发中", detail: "当现货/永续基差收敛至 0.05%", tone: "accent" },
-  { title: "预估资金流向", status: "等待", detail: "累计资金费率收益达到 1.2%", tone: "muted" },
-  { title: "强制平仓警报", status: "关键", detail: "账户净值跌破预警线 $1,250,000", tone: "danger" },
-];
+function formatSymbol(symbol: string) {
+  return symbol.endsWith("USDT") ? `${symbol.slice(0, -4)}/USDT` : symbol;
+}
+
+function healthLabel(health: HedgeOverviewItem["health"]) {
+  switch (health) {
+    case "healthy":
+      return "健康";
+    case "monitoring":
+      return "观察中";
+    case "rebalance_required":
+      return "需再平衡";
+    case "recovery_required":
+      return "待恢复";
+    default:
+      return "未知";
+  }
+}
+
+function buildExitConditions(selectedRow: HedgeOverviewItem | null, rebalancePlan: HedgeRebalancePlan | undefined) {
+  if (!selectedRow) {
+    return [
+      { title: "等待持仓", status: "同步中", detail: "等待后端返回第一批活跃对冲仓位。", tone: "muted" },
+    ];
+  }
+
+  return [
+    {
+      title: "当前暴露偏移",
+      status: `${selectedRow.exposure_bps.toFixed(2)} bps`,
+      detail: `净暴露 ${selectedRow.net_exposure.toFixed(2)} USDT`,
+      tone:
+        selectedRow.health === "recovery_required"
+          ? "danger"
+          : selectedRow.health === "rebalance_required"
+            ? "accent"
+            : "muted",
+    },
+    {
+      title: "建议动作",
+      status: rebalancePlan ? rebalancePlan.recommended_action : "等待",
+      detail: rebalancePlan?.notes ?? "等待再平衡建议生成。",
+      tone:
+        rebalancePlan?.recommended_action === "recover_trade"
+          ? "danger"
+          : rebalancePlan?.recommended_action === "increase_perp_hedge" ||
+              rebalancePlan?.recommended_action === "reduce_perp_hedge"
+            ? "accent"
+            : "muted",
+    },
+    {
+      title: "最新事件",
+      status: selectedRow.latest_event_severity ?? "info",
+      detail: selectedRow.latest_event_summary ?? "暂无异常事件。",
+      tone:
+        selectedRow.latest_event_severity === "critical" || selectedRow.latest_event_severity === "error"
+          ? "danger"
+          : selectedRow.latest_event_severity === "warning"
+            ? "accent"
+            : "muted",
+    },
+  ];
+}
 
 export function PositionMonitorPage() {
+  const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
+
+  const overviewQuery = useQuery({
+    queryKey: ["hedge-overview", 50],
+    queryFn: () => apiClient.getHedgeOverview<HedgeOverviewResponse>({ exposure_limit_bps: 50 }),
+  });
+
+  const rows = overviewQuery.data?.items ?? [];
+
+  useEffect(() => {
+    if (rows.length === 0) {
+      setSelectedTradeId(null);
+      return;
+    }
+    if (!selectedTradeId || !rows.some((row) => row.trade_id === selectedTradeId)) {
+      setSelectedTradeId(rows[0].trade_id);
+    }
+  }, [rows, selectedTradeId]);
+
+  const selectedRow = rows.find((row) => row.trade_id === selectedTradeId) ?? null;
+  const rebalancePlanQuery = useQuery({
+    queryKey: ["hedge-rebalance-plan", selectedTradeId, 50],
+    queryFn: () => apiClient.getHedgeRebalancePlan<HedgeRebalancePlan>(selectedTradeId as string, { exposure_limit_bps: 50 }),
+    enabled: selectedTradeId !== null,
+  });
+
+  const summaryCards = useMemo(() => {
+    const totalNotional = rows.reduce((sum, row) => sum + Math.max(row.spot_notional, row.perp_notional), 0);
+    const totalExposure = rows.reduce((sum, row) => sum + Math.abs(row.net_exposure), 0);
+    const recoveryCount = overviewQuery.data?.recovery_required_count ?? 0;
+    return [
+      { label: "当前持仓数", value: String(overviewQuery.data?.active_trade_count ?? 0).padStart(2, "0"), hint: `${recoveryCount} 组待恢复` },
+      { label: "总名义仓位", value: formatCurrency(totalNotional), hint: "按活跃仓位最大腿名义值汇总" },
+      { label: "净暴露敞口", value: formatCurrency(totalExposure), hint: "用于再平衡与恢复优先级排序" },
+    ];
+  }, [overviewQuery.data, rows]);
+
+  const exitConditions = buildExitConditions(selectedRow, rebalancePlanQuery.data);
   const footerContent = (
     <>
-      <span>核心引擎: 运行中</span>
-      <span>API 延迟: 12ms</span>
-      <span>序列号: OBJ-2940-X1</span>
+      <span>ACTIVE HEDGES / {overviewQuery.data?.active_trade_count ?? 0} 组</span>
+      <span>
+        {overviewQuery.data
+          ? `最近更新 ${timeFormatter.format(new Date(overviewQuery.data.generated_at))}`
+          : "等待持仓摘要同步"}
+      </span>
+      <span>REBALANCE LIMIT / 50 bps</span>
     </>
   );
 
@@ -65,7 +147,7 @@ export function PositionMonitorPage() {
         </header>
 
         <section className="proto-stat-grid proto-stat-grid--three">
-          {overviewCards.map((card) => (
+          {summaryCards.map((card) => (
             <article className="proto-stat-card" key={card.label}>
               <p>{card.label}</p>
               <strong>{card.value}</strong>
@@ -83,39 +165,56 @@ export function PositionMonitorPage() {
               </div>
               <div className="proto-chip-row">
                 <span className="proto-chip proto-chip--active">全部</span>
-                <span className="proto-chip">高偏离</span>
+                <span className="proto-chip">{overviewQuery.data?.rebalance_required_count ?? 0} 组需再平衡</span>
               </div>
             </div>
+
+            {overviewQuery.isPending ? <p className="panel-state">正在同步持仓监控数据</p> : null}
+            {overviewQuery.isError ? <p className="panel-alert">持仓监控数据暂时不可用</p> : null}
 
             <div className="proto-table-shell">
               <div className="proto-table-row proto-table-row--positions proto-table-row--head">
                 <span>交易对</span>
                 <span>对冲偏离</span>
-                <span>杠杆</span>
-                <span>资金费率状态</span>
-                <span>止盈 / 止损</span>
+                <span>运行模式</span>
+                <span>状态</span>
+                <span>再平衡建议</span>
                 <span>操作</span>
               </div>
-              {hedgeRows.map((row) => (
-                <div className="proto-table-row proto-table-row--positions" key={row.symbol}>
+              {!overviewQuery.isPending && !overviewQuery.isError && rows.length === 0 ? (
+                <div className="table-empty">暂无活跃持仓</div>
+              ) : null}
+              {rows.map((row) => (
+                <button
+                  className={`proto-table-row proto-table-row--positions${selectedTradeId === row.trade_id ? " scanner-table--active" : ""}`}
+                  key={row.trade_id}
+                  type="button"
+                  onClick={() => setSelectedTradeId(row.trade_id)}
+                >
                   <div>
-                    <strong>{row.symbol}</strong>
-                    <span className="proto-meta">{row.venue}</span>
+                    <strong>{formatSymbol(row.symbol)}</strong>
+                    <span className="proto-meta">{row.mode.toUpperCase()} / {row.trade_id}</span>
                   </div>
                   <div>
                     <div className="proto-progress">
-                      <div className="proto-progress__fill" style={{ width: row.divergenceWidth }} />
+                      <div className="proto-progress__fill" style={{ width: `${Math.min(100, Math.max(row.exposure_bps, 8))}%` }} />
                     </div>
-                    <span className="proto-meta">{row.divergence}</span>
+                    <span className="proto-meta">{row.exposure_bps.toFixed(2)} bps</span>
                   </div>
-                  <span className="proto-pill">{row.leverage}</span>
-                  <span>{row.funding}</span>
+                  <span className="proto-pill">{row.mode.toUpperCase()}</span>
+                  <span>{healthLabel(row.health)}</span>
                   <div>
-                    <strong className="proto-text--accent">{row.takeProfit}</strong>
-                    <span className="proto-meta proto-text--danger">{row.stopLoss}</span>
+                    <strong className="proto-text--accent">
+                      {selectedTradeId === row.trade_id && rebalancePlanQuery.data
+                        ? rebalancePlanQuery.data.recommended_action
+                        : row.health === "rebalance_required"
+                          ? "等待建议"
+                          : "monitor_only"}
+                    </strong>
+                    <span className="proto-meta">{formatCurrency(Math.abs(row.net_exposure))}</span>
                   </div>
-                  <span className="proto-meta">•••</span>
-                </div>
+                  <span className="proto-meta">查看</span>
+                </button>
               ))}
             </div>
           </article>
@@ -128,6 +227,9 @@ export function PositionMonitorPage() {
                   <h3>退出条件详情</h3>
                 </div>
               </div>
+
+              {rebalancePlanQuery.isPending && selectedTradeId ? <p className="panel-state panel-state-subtle">正在生成再平衡建议</p> : null}
+              {rebalancePlanQuery.isError ? <p className="panel-alert">再平衡建议暂时不可用</p> : null}
 
               <div className="proto-alert-list">
                 {exitConditions.map((item) => (
@@ -164,9 +266,17 @@ export function PositionMonitorPage() {
               </div>
 
               <div className="proto-heatbars">
-                {[52, 76, 66, 100, 30, 84, 68, 52, 74, 48].map((height, index) => (
-                  <div className="proto-heatbars__bar" key={`${height}-${index}`} style={{ height: `${height}%` }} />
-                ))}
+                {rows.length > 0
+                  ? rows.slice(0, 10).map((row) => (
+                      <div
+                        className="proto-heatbars__bar"
+                        key={row.trade_id}
+                        style={{ height: `${Math.max(18, Math.min(100, row.exposure_bps))}%` }}
+                      />
+                    ))
+                  : [52, 76, 66, 100, 30, 84, 68, 52, 74, 48].map((height, index) => (
+                      <div className="proto-heatbars__bar" key={`${height}-${index}`} style={{ height: `${height}%` }} />
+                    ))}
               </div>
             </article>
           </div>

@@ -27,3 +27,22 @@ export async function apiGet<T>(path: string, params?: Record<string, QueryValue
 
   return response.json() as Promise<T>;
 }
+
+type HedgeOverviewParams = {
+  exposure_limit_bps?: number;
+};
+
+type HedgeRebalancePlanParams = {
+  exposure_limit_bps?: number;
+};
+
+type ExecutionSummaryParams = {
+  limit_incidents?: number;
+};
+
+export const apiClient = {
+  getHedgeOverview: <T>(params?: HedgeOverviewParams) => apiGet<T>("/api/v1/algo/hedge/overview", params),
+  getHedgeRebalancePlan: <T>(tradeId: string, params?: HedgeRebalancePlanParams) =>
+    apiGet<T>(`/api/v1/algo/hedge/rebalance-plan/${encodeURIComponent(tradeId)}`, params),
+  getExecutionSummary: <T>(params?: ExecutionSummaryParams) => apiGet<T>("/api/v1/algo/execution/summary", params),
+};

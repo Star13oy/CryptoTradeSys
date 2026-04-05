@@ -1,27 +1,106 @@
+import { useQuery } from "@tanstack/react-query";
+
+import { apiClient } from "../../shared/api/client";
+import type { ExecutionSummaryResponse } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
-const anomalyCards = [
-  { value: "04", label: "阈值告警", tone: "warning" },
-  { value: "00", label: "系统性异常", tone: "danger" },
-];
+function buildRiskLevel(summary: ExecutionSummaryResponse | undefined) {
+  if (!summary) {
+    return { label: "SYNCING", score: 0 };
+  }
+  const criticalCount = summary.recent_incidents.filter((item) => item.severity === "critical").length;
+  const errorCount = summary.recent_incidents.filter((item) => item.severity === "error").length;
+  const warningCount = summary.recent_incidents.filter((item) => item.severity === "warning").length;
+  const recoveryCount = summary.recovery_queue.length;
+  const score = Math.min(100, criticalCount * 45 + errorCount * 25 + warningCount * 10 + recoveryCount * 12);
 
-const thresholdRows = [
-  { label: "总风险预算 (USD)", value: "$1,200,000", min: "$0", max: "$5,000,000", width: "64%", tone: "accent" },
-  { label: "单标的上限 (BTC/USDT)", value: "2.5%", min: "0.1%", max: "10.0%", width: "36%", tone: "accent" },
-  { label: "最低保证金率阈值", value: "15.0%", min: "5%", max: "50%", width: "28%", tone: "warning" },
-  { label: "执行延迟阈值 (ms)", value: "120ms", min: "10ms", max: "1000ms", width: "18%", tone: "danger" },
-];
+  if (criticalCount > 0 || recoveryCount >= 3) {
+    return { label: "CRITICAL", score };
+  }
+  if (errorCount > 0 || warningCount > 0 || recoveryCount > 0) {
+    return { label: "GUARDED", score };
+  }
+  return { label: "NORMAL", score };
+}
 
-const rules = [
-  ["异常滑点保护", "Slippage > 0.5%", "CANCEL_ORDER", "12", "20:42:11", "accent"],
-  ["单日亏损熔断", "Daily_PnL < -2%", "KILL_SWITCH", "0", "--", "danger"],
-  ["API 速率限制告警", "Rate > 80% Cap", "ALERT_ONLY", "154", "21:15:04", "warning"],
-  ["延迟敏感性过滤", "Lat > 100ms", "RE_ROUTE", "42", "12:00:59", "muted"],
-];
+function statusCount(summary: ExecutionSummaryResponse | undefined, status: string) {
+  return summary?.status_counts.find((item) => item.status === status)?.count ?? 0;
+}
 
 export function RiskCenterPage() {
+  const summaryQuery = useQuery({
+    queryKey: ["execution-summary", 6],
+    queryFn: () => apiClient.getExecutionSummary<ExecutionSummaryResponse>({ limit_incidents: 6 }),
+  });
+
+  const summary = summaryQuery.data;
+  const riskLevel = buildRiskLevel(summary);
+  const anomalyCards = [
+    {
+      value: String(summary?.recent_incidents.filter((item) => item.severity === "warning").length ?? 0).padStart(2, "0"),
+      label: "阈值告警",
+      tone: "warning",
+    },
+    {
+      value: String(summary?.recent_incidents.filter((item) => item.severity === "critical").length ?? 0).padStart(2, "0"),
+      label: "系统性异常",
+      tone: "danger",
+    },
+  ];
+  const thresholdRows = [
+    {
+      label: "恢复队列规模",
+      value: `${summary?.recovery_queue.length ?? 0} 笔`,
+      min: "0",
+      max: "10+",
+      width: `${Math.min(100, (summary?.recovery_queue.length ?? 0) * 18)}%`,
+      tone: (summary?.recovery_queue.length ?? 0) > 0 ? "warning" : "accent",
+    },
+    {
+      label: "失败执行数量",
+      value: `${statusCount(summary, "failed")} 笔`,
+      min: "0",
+      max: "10+",
+      width: `${Math.min(100, statusCount(summary, "failed") * 18)}%`,
+      tone: statusCount(summary, "failed") > 0 ? "danger" : "accent",
+    },
+    {
+      label: "待恢复执行数量",
+      value: `${statusCount(summary, "recovery_pending")} 笔`,
+      min: "0",
+      max: "10+",
+      width: `${Math.min(100, statusCount(summary, "recovery_pending") * 18)}%`,
+      tone: statusCount(summary, "recovery_pending") > 0 ? "warning" : "accent",
+    },
+    {
+      label: "风险评分",
+      value: `${riskLevel.score} / 100`,
+      min: "0",
+      max: "100",
+      width: `${Math.max(8, riskLevel.score)}%`,
+      tone: riskLevel.label === "CRITICAL" ? "danger" : riskLevel.label === "GUARDED" ? "warning" : "accent",
+    },
+  ];
+  const rules = summary?.recent_incidents.map((item) => [
+    item.severity === "critical" ? "关键事故" : item.severity === "error" ? "执行异常" : "告警事件",
+    item.event_type,
+    item.trade_id ? `TRADE:${item.trade_id}` : "NO_TRADE",
+    item.severity.toUpperCase(),
+    item.summary,
+    item.severity === "critical" ? "danger" : item.severity === "error" ? "warning" : "muted",
+  ]) ?? [
+    ["风险规则同步中", "等待 execution summary", "--", "SYNC", "暂无风险事件", "muted"],
+  ];
+  const footerContent = (
+    <>
+      <span>RISK LEVEL / {riskLevel.label}</span>
+      <span>{summary ? `恢复队列 ${summary.recovery_queue.length} 笔` : "等待执行摘要同步"}</span>
+      <span>{summaryQuery.isError ? "执行摘要异常" : "EXECUTION SUMMARY ONLINE"}</span>
+    </>
+  );
+
   return (
-    <TerminalLayout activePath="/risk">
+    <TerminalLayout activePath="/risk" footerContent={footerContent}>
       <section className="proto-page">
         <header className="proto-header">
           <div>
@@ -43,8 +122,8 @@ export function RiskCenterPage() {
             <article className="proto-panel">
               <p className="proto-panel__eyebrow">Current Risk</p>
               <h3>当前风险等级</h3>
-              <div className="proto-risk-badge">NORMAL</div>
-              <span className="proto-meta">风险评分: 12 / 100</span>
+              <div className="proto-risk-badge">{riskLevel.label}</div>
+              <span className="proto-meta">风险评分: {riskLevel.score} / 100</span>
             </article>
 
             <article className="proto-panel">
@@ -65,20 +144,28 @@ export function RiskCenterPage() {
               <h3>实体访问控制</h3>
               <div className="proto-meter">
                 <div className="proto-meter__row">
-                  <span>白名单 (White-List)</span>
-                  <strong>142 地址</strong>
+                  <span>恢复队列 (Recovery Queue)</span>
+                  <strong>{summary?.recovery_queue.length ?? 0} 笔</strong>
                 </div>
                 <div className="proto-progress">
-                  <div className="proto-progress__fill" style={{ width: "68%" }} />
+                  <div className="proto-progress__fill" style={{ width: `${Math.min(100, (summary?.recovery_queue.length ?? 0) * 18)}%` }} />
                 </div>
               </div>
               <div className="proto-meter">
                 <div className="proto-meter__row">
-                  <span>黑名单 (Black-List)</span>
-                  <strong>1,204 地址</strong>
+                  <span>最近高危事件</span>
+                  <strong>{summary?.recent_incidents.filter((item) => item.severity !== "warning").length ?? 0} 条</strong>
                 </div>
                 <div className="proto-progress">
-                  <div className="proto-progress__fill proto-progress__fill--danger" style={{ width: "26%" }} />
+                  <div
+                    className="proto-progress__fill proto-progress__fill--danger"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (summary?.recent_incidents.filter((item) => item.severity !== "warning").length ?? 0) * 18
+                      )}%`,
+                    }}
+                  />
                 </div>
               </div>
               <div className="proto-action-grid proto-action-grid--two">
@@ -100,6 +187,9 @@ export function RiskCenterPage() {
               </div>
               <span className="proto-chip proto-chip--active">实时生效</span>
             </div>
+
+            {summaryQuery.isPending ? <p className="panel-state">正在同步执行风险摘要</p> : null}
+            {summaryQuery.isError ? <p className="panel-alert">执行风险摘要暂时不可用</p> : null}
 
             <div className="proto-threshold-grid">
               {thresholdRows.map((row) => (
@@ -139,7 +229,7 @@ export function RiskCenterPage() {
                 <span>最后活动</span>
               </div>
               {rules.map(([name, condition, action, count, lastSeen, tone]) => (
-                <div className="proto-table-row proto-table-row--risk" key={name}>
+                <div className="proto-table-row proto-table-row--risk" key={`${name}-${condition}-${lastSeen}`}>
                   <span className={`proto-dot proto-dot--${tone}`} />
                   <strong>{name}</strong>
                   <span>{condition}</span>

@@ -42,6 +42,13 @@ from app.ledger import (
     TradeLedgerStore,
 )
 from app.risk import OpportunityRiskPolicy, RiskDecision
+from app.reconciliation import (
+    ExchangeOrderReportImportRequest,
+    ExchangeOrderReportImportResponse,
+    ExchangeOrderReportListResponse,
+    ReconciliationService,
+    ReconciliationSummary,
+)
 from app.schemas.adaptation import (
     AdaptationPackageEvaluationRequest,
     AdaptationPackageEvaluationResponse,
@@ -125,6 +132,20 @@ def get_hedge_manager_service(
     audit_service: AuditEventService = Depends(get_audit_event_service),
 ) -> HedgeManagerService:
     return HedgeManagerService(ledger_service, audit_service)
+
+
+def get_reconciliation_service(
+    ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
+    audit_service: AuditEventService = Depends(get_audit_event_service),
+) -> ReconciliationService:
+    settings = get_settings()
+    from app.reconciliation import ExchangeOrderReportStore
+
+    return ReconciliationService(
+        ExchangeOrderReportStore(settings.exchange_order_report_path),
+        ledger_service,
+        audit_service,
+    )
 
 
 @router.post("/risk/evaluate", response_model=RiskDecision)
@@ -377,3 +398,33 @@ async def get_hedge_rebalance_plan(
         return hedge_service.build_rebalance_plan(trade_id, exposure_limit_bps=exposure_limit_bps)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/reconciliation/reports", response_model=ExchangeOrderReportListResponse)
+async def list_reconciliation_reports(
+    symbol: str | None = None,
+    order_id: str | None = None,
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ExchangeOrderReportListResponse:
+    return ExchangeOrderReportListResponse(
+        reports=reconciliation_service.list_reports(symbol=symbol, order_id=order_id),
+    )
+
+
+@router.post("/reconciliation/reports/import", response_model=ExchangeOrderReportImportResponse)
+async def import_reconciliation_reports(
+    request: ExchangeOrderReportImportRequest,
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ExchangeOrderReportImportResponse:
+    persisted = reconciliation_service.import_reports(request.reports, mode=request.mode)
+    return ExchangeOrderReportImportResponse(
+        imported_reports=len(request.reports),
+        total_reports=len(persisted),
+    )
+
+
+@router.get("/reconciliation/summary", response_model=ReconciliationSummary)
+async def get_reconciliation_summary(
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationSummary:
+    return reconciliation_service.build_summary()

@@ -90,6 +90,19 @@
 
 这对 console 和人工值守很有价值，因为它把“执行是否健康”从散落的事件里提炼成了可读摘要。
 
+### 2.7 已经有第一版对账底座
+
+当前项目已经补上了一个很轻量但真实可用的对账起点：
+
+1. 可以导入交易所订单回报快照。
+2. 可以按 `order_id / symbol` 查询这些回报。
+3. `ReconciliationService` 会把 imported exchange reports 与 live ledger、execution audit 里的预期订单 ID 做对照。
+4. 当前已能识别两类基础问题：
+   - `missing_exchange_report`
+   - `status_mismatch`
+
+这还不是完整的交易所级持续对账，但已经把“如何发现本地状态和外部事实不一致”从概念推进到了真实 API 和真实读模型。
+
 ## 3. 当前还缺什么
 
 下面这些是目前还没有从代码里确认到的能力，不能写成已完成。

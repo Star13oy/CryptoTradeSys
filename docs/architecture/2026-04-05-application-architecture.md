@@ -20,11 +20,11 @@
 系统边界（当前）：
 
 - 包含：
-  - `frontend`：控制台 UI（7 页路由，其中 2 页接真实后端数据）
+  - `frontend`：控制台 UI（7 页路由，其中 4 页接真实后端数据）
   - `backend`：FastAPI 服务、策略/风控/回测/调参、执行编排、JSON 持久化
   - 与 Binance 公共/签名 API 的对接客户端
 - 不包含：
-  - 交易所回报对账与持仓级真实状态机
+  - 持仓级真实状态机与自动化再平衡执行
   - 自动守护进程（巡检/熔断/自动恢复 worker）
   - 账号体系、权限体系、多租户与审计合规增强
   - 数据库/消息队列等生产级基础设施
@@ -61,6 +61,8 @@
 - `adaptation/service.py`：调参建议、包评估、手动确认后应用
 - `execution/service.py`：执行编排、幂等、故障恢复流程
 - `execution/read_service.py`：执行看板读模型（状态统计/恢复队列/事故）
+- `hedge/service.py`：持仓健康分类与再平衡建议
+- `reconciliation/service.py`：交易所回报导入后的账本/审计对账摘要
 - `backtest/engine.py` + `backtest/dataset_service.py`：回测执行与数据集重放
 - `journal/service.py`、`ledger/service.py`、`audit/service.py`：记录写入与查询封装
 
@@ -124,6 +126,24 @@
    - 根据回包状态归一为 `filled/partial/failed/submitted`，并落 ledger/audit。
 5. `recover` 可对 `failed/recovery_pending` 执行人工恢复动作。
 
+## 4.5 持仓健康与对账链路
+
+1. `/api/v1/algo/hedge/overview` 从 ledger + audit 中读取活跃交易。
+2. `HedgeManagerService` 计算：
+   - `healthy`
+   - `monitoring`
+   - `rebalance_required`
+   - `recovery_required`
+3. `/api/v1/algo/hedge/rebalance-plan/{trade_id}` 会把净暴露偏移转换成可执行建议：
+   - `increase_perp_hedge`
+   - `reduce_perp_hedge`
+   - `recover_trade`
+   - `monitor_only`
+4. `/api/v1/algo/reconciliation/reports/import` 用于导入交易所订单回报快照。
+5. `/api/v1/algo/reconciliation/summary` 把 imported exchange reports 与 live ledger + execution audit 对照，识别：
+   - `missing_exchange_report`
+   - `status_mismatch`
+
 ## 5. 运行模式：paper vs live
 
 运行参数来自 `FUNDING_ARB_*` 环境变量（`app/core/settings.py`）。
@@ -155,8 +175,8 @@
   - `/models` 模型
   - `/audit` 审计
 - 实际后端接入状态：
-  - 已接：`DashboardPage`、`OpportunityScanPage`
-  - 未接（静态原型数据）：其余 5 页
+  - 已接：`DashboardPage`、`OpportunityScanPage`、`PositionMonitorPage`、`RiskCenterPage`
+  - 未接（静态原型数据）：`BacktestLabPage`、`ModelWorkbenchPage`、`AuditLogCenterPage`
 
 ## 6.2 请求链路
 
@@ -167,7 +187,8 @@
 ## 6.3 执行观察链路
 
 - 后端已提供 `/api/v1/algo/execution/summary`（执行读模型）。
-- 当前前端页面尚未接该接口，执行态仍未在 UI 完整展示。
+- 当前 `RiskCenterPage` 已接该接口，`PositionMonitorPage` 已接 hedge overview / rebalance plan。
+- `审计中心 / 回测实验室 / 模型工作台` 仍未接入这些真实后端能力。
 
 ## 7. 关键持久化设计（当前）
 
@@ -179,6 +200,7 @@
 - `backtest-datasets.json`：回测数据集
 - `trade-ledger.json`：统一交易台账（paper/live）
 - `audit-events.json`：审计事件（风险/执行/恢复）
+- `exchange-order-reports.json`：导入的交易所订单回报快照
 
 特点：
 
@@ -218,12 +240,13 @@
 - 统一 ledger + audit + journal 文件持久化
 - 执行编排（paper + live 基础适配）、幂等重放、恢复接口
 - 执行读侧摘要 API
-- 前端 7 页路由框架与其中 2 页真实后端接入
+- hedge manager 读模型、再平衡建议接口与 reconciliation 摘要
+- 前端 7 页路由框架与其中 4 页真实后端接入
 
 ## 9.2 未实现或未闭环
 
 - 生产级执行可靠性：
-  - 成交回报对账
+  - 自动拉取交易所成交回报并持续对账
   - 完整重试/补偿策略
   - 交易所异常语义分层处理
 - 持仓管理与 hedge manager 的持续化闭环

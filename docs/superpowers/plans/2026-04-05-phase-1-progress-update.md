@@ -22,6 +22,7 @@
 7. 已补上 live execution preflight guards、`recovery_pending` 恢复轨道，以及 execution summary 读接口。
 8. 已补上 `hedge manager` 读模型，能够对活跃交易给出 `healthy / monitoring / rebalance_required / recovery_required` 分类。
 9. 已补上 hedge rebalance plan 接口，能把暴露偏移转换成明确的再平衡建议动作。
+10. 已补上 reconciliation 底座，可导入交易所订单回报并对照 live ledger + execution audit 做摘要对账。
 
 ## What Is Implemented
 
@@ -47,6 +48,12 @@
 7. `审计与日志中心`
 
 当前这些页面以原型级交互和后端合同接线为主，尚未全部联到真实算法流程。
+其中已经接入真实后端的页面为：
+
+1. `总览指挥台`
+2. `机会扫描页`
+3. `持仓监控`
+4. `风控中心`
 
 ### 3. Algorithm core
 
@@ -94,6 +101,7 @@
 13. 已支持 live `partial fill -> recovery_pending`、手动 `recover`、以及 execution summary 读模型，便于控制台展示恢复队列与最近事故。
 14. 已支持 hedge overview API，可按 `exposure_limit_bps` 对活跃交易做暴露偏移判定，为持仓监控和风险页面提供稳定后端合同。
 15. 已支持 hedge rebalance plan API，可把净暴露转成 `increase_perp_hedge / reduce_perp_hedge / recover_trade / monitor_only` 建议。
+16. 已支持 reconciliation reports 导入、列表和 summary API，可识别 `missing_exchange_report` 与 `status_mismatch` 两类基础问题。
 
 ## Real Progress Against The Original Design
 
@@ -109,6 +117,7 @@
 8. `Custom Strategy and Model Framework` 的第一版接口
 9. `Portfolio Hedge Manager` 的第一版读模型
 10. `Portfolio Hedge Manager` 的第一版再平衡建议接口
+11. `Execution Reconciliation` 的第一版回报导入与差异识别接口
 
 ### 仍然是主要缺口的模块
 
@@ -123,7 +132,7 @@
 
 ### Backend
 
-- Full backend suite: `67 passed`
+- Full backend suite: `73 passed`
 
 覆盖范围包括：
 
@@ -149,6 +158,12 @@
 20. authenticated Binance trading client + live adapter
 21. hedge manager read service / API
 22. hedge rebalance planning API
+23. reconciliation store / service / API
+
+### Frontend
+
+- Full frontend suite: `17 passed`
+- `npm run build`: passed
 
 ### Live scoring smoke result
 
@@ -167,8 +182,8 @@
 
 1. 用真实测试账户对 live adapter 做小额白名单联调，并补 exchange response reconciliation / retry / compensation。
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
-3. 把 `adaptation/backtest/ledger/execution/hedge` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控`。
-4. 再往下推进 hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
+3. 把 `adaptation/backtest/ledger/execution/hedge/reconciliation` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控 / 风控中心`。
+4. 再往下推进真实交易所回报抓取、hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
 
 ## Practical Note
 

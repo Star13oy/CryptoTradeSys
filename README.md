@@ -32,8 +32,9 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 15. An execution read-side summary API that exposes status counts, recovery queue items, and recent incidents for the console.
 16. A first hedge-manager read model that classifies active trades into `healthy / monitoring / rebalance_required / recovery_required`.
 17. A hedge rebalance-plan API that translates exposure drift into an operator-facing recommended action and perp-notional adjustment hint.
-18. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
-19. Seven console pages aligned to the Stitch project:
+18. A first reconciliation foundation that imports exchange order reports and compares them against live ledger plus execution audit trails.
+19. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
+20. Seven console pages aligned to the Stitch project:
    - `总览指挥台`
    - `机会扫描页`
    - `持仓监控`
@@ -72,6 +73,9 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 24. `/api/v1/algo/execution/summary`
 25. `/api/v1/algo/hedge/overview`
 26. `/api/v1/algo/hedge/rebalance-plan/{trade_id}`
+27. `/api/v1/algo/reconciliation/reports`
+28. `/api/v1/algo/reconciliation/reports/import`
+29. `/api/v1/algo/reconciliation/summary`
 
 ### Runtime modules
 
@@ -86,6 +90,7 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 - `backend/app/audit/`: event audit persistence and query surface
 - `backend/app/execution/`: execution intent orchestration, recovery flow, and execution summary read model
 - `backend/app/hedge/`: hedge-health classification and rebalance/recovery overview
+- `backend/app/reconciliation/`: imported exchange-order reports and ledger/audit reconciliation summary
 - `backend/app/exchange/binance_trading.py`: authenticated Binance trading client for signed order placement
 
 ## Project Structure
@@ -100,15 +105,15 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 
 Latest verified status in this worktree:
 
-1. Full backend suite: `67 passed`
-2. Frontend was previously passing and buildable before the backend-focused slice:
-   - `vitest`: passed
-   - `vite build`: passed
-3. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
-4. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
-5. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
-6. Hedge overview now classifies active trades by exposure drift and recovery state so positions/risk pages can consume a stable backend contract.
-7. Hedge rebalance plans now convert drift into explicit `increase/reduce perp hedge` recommendations for operator tooling.
+1. Full backend suite: `73 passed`
+2. Full frontend suite: `17 passed`
+3. Frontend production build: `vite build` passed
+4. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
+5. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
+6. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
+7. Hedge overview now classifies active trades by exposure drift and recovery state so positions/risk pages can consume a stable backend contract.
+8. Hedge rebalance plans now convert drift into explicit `increase/reduce perp hedge` recommendations for operator tooling.
+9. Reconciliation can now import exchange order snapshots and flag missing exchange reports or local/exchange status mismatches.
 
 ## Local Setup
 
