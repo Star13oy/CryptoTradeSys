@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-Hans"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OBSIDIAN LEDGER - 模型工作台</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#2e3446",
+                        "background": "#0c1323",
+                        "surface-container": "#191f30",
+                        "primary-container": "#29a195",
+                        "tertiary-container": "#ca8100",
+                        "tertiary-fixed": "#ffddb8",
+                        "inverse-surface": "#dce2f9",
+                        "secondary-fixed": "#d8e3fb",
+                        "inverse-on-surface": "#293041",
+                        "outline": "#879391",
+                        "secondary": "#bcc7de",
+                        "on-primary-fixed": "#00201d",
+                        "primary-fixed": "#89f5e7",
+                        "on-primary-container": "#00302b",
+                        "tertiary": "#ffb95f",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-tertiary": "#472a00",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "inverse-primary": "#006a61",
+                        "secondary-container": "#3e495d",
+                        "outline-variant": "#3d4947",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "surface": "#0c1323",
+                        "on-secondary": "#263143",
+                        "surface-container-lowest": "#070e1e",
+                        "surface-bright": "#32394b",
+                        "on-error": "#690005",
+                        "surface-container-low": "#141b2c",
+                        "primary": "#6bd8cb",
+                        "on-secondary-fixed": "#111c2d",
+                        "on-background": "#dce2f9",
+                        "surface-tint": "#6bd8cb",
+                        "on-tertiary-container": "#3e2400",
+                        "on-primary-fixed-variant": "#005049",
+                        "surface-container-high": "#232a3b",
+                        "on-surface-variant": "#bcc9c6",
+                        "surface-dim": "#0c1323",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-tertiary-fixed": "#2a1700",
+                        "error": "#ffb4ab",
+                        "on-primary": "#003732",
+                        "on-secondary-container": "#aeb9d0",
+                        "error-container": "#93000a",
+                        "on-surface": "#dce2f9",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#2e3446"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 1.25rem;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .headline-font { font-family: 'Space Grotesk', sans-serif; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #070e1e; }
+        ::-webkit-scrollbar-thumb { background: #3d4947; border-radius: 2px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary/30">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 flex flex-col bg-[#070e1e] border-r border-[#3d4947]/10 shadow-[4px_0_24px_rgba(11,18,34,0.5)] z-50">
+<div class="px-6 py-8">
+<div class="flex items-center gap-3 mb-10">
+<div class="w-8 h-8 bg-gradient-to-br from-primary to-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div class="flex flex-col">
+<span class="text-primary font-bold tracking-wider headline-font text-lg">QUANT_ADMIN</span>
+<span class="text-on-surface-variant text-[10px] uppercase tracking-[0.2em]">高级交易员</span>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-xs">总览面板</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">search_check</span>
+<span class="font-medium text-xs">扫描器</span>
+</a>
+<a class="bg-gradient-to-r from-[#6bd8cb]/10 to-transparent text-[#6bd8cb] border-l-4 border-[#6bd8cb] flex items-center gap-3 px-4 py-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-medium text-xs">分析工作台</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-medium text-xs">监控中心</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-medium text-xs">风险管理</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto px-6 py-8 border-t border-[#3d4947]/10">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary-container py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 mb-6">
+<span class="material-symbols-outlined text-sm">add</span>
+                新策略
+            </button>
+<div class="space-y-1">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:text-[#dce2f9] text-xs transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    系统设置
+                </a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:text-error text-xs transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+                    退出登录
+                </a>
+</div>
+</div>
+</aside>
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="h-14 flex justify-between items-center w-full px-8 sticky top-0 z-40 bg-[#0c1323]/80 backdrop-blur-md border-b border-[#3d4947]/15">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-widest bg-gradient-to-r from-[#6bd8cb] to-[#29a195] bg-clip-text text-transparent headline-font">OBSIDIAN LEDGER</span>
+<nav class="flex gap-6 font-['Space_Grotesk'] text-sm tracking-tight tabular-nums">
+<a class="text-[#6bd8cb] border-b-2 border-[#6bd8cb] pb-1" href="#">实盘模式</a>
+<a class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors" href="#">连接成功</a>
+<span class="text-[#bcc9c6] opacity-50">14:02:35 UTC+8</span>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-[#bcc9c6]">
+<button class="material-symbols-outlined hover:text-primary transition-colors">notifications</button>
+<button class="material-symbols-outlined hover:text-primary transition-colors">settings</button>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-outline-variant/30">
+<span class="text-xs font-medium text-on-surface">DR. WEI</span>
+<img alt="用户头像" class="w-8 h-8 rounded-full border border-primary/20" data-alt="professional portrait of a financial analyst in a dark suit, minimalist lighting, corporate aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdz8gAYWBc_DOyOdl4QCi_4pzq0HggnkVeJVl7I0hZEb_Q99pRaW4CtmLinGESuk5qrG1WlbPUonmXGRTmYWgsg6y8jZQtMFSflOWfNfUe9pTfntdfk2iJXUdwWbAGsqeL4aBcL77RG1MNJeP-5dGELXlGr5djhtFDwIntyCTnbNC2X4c0yA4yugP7NoCRDsTe9Vw4X6dIHEKxGH_eDfEae05cWJ6lXx9LfIPPD8mb6sLOGeUFsGAsnS_0MoV0N4YY52dwgm4Nl-XN"/>
+</div>
+</div>
+</header>
+<!-- Workbench Content -->
+<div class="p-8 flex-1 space-y-8 max-w-[1600px]">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-3xl font-bold headline-font text-on-surface">模型工作台 <span class="text-primary font-light ml-2">/ Workbench</span></h1>
+<p class="text-on-surface-variant text-sm mt-1">集成化的量化策略研发与部署环境</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 border border-outline-variant/30 text-xs font-medium rounded-lg hover:bg-surface-container-high transition-all">导出分析报告</button>
+<button class="px-4 py-2 bg-primary text-on-primary-container text-xs font-bold rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+                        一键部署实盘
+                    </button>
+</div>
+</div>
+<!-- Main Layout Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Left: Model Library (3 cols) -->
+<div class="col-span-3 space-y-4">
+<div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant/5">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-xs font-bold tracking-widest text-on-surface-variant">模型库 (Library)</h3>
+<span class="material-symbols-outlined text-sm text-outline">filter_list</span>
+</div>
+<div class="space-y-2">
+<!-- Active Model -->
+<div class="bg-surface-container-high border-l-2 border-primary p-3 rounded-r-lg group cursor-pointer transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-on-surface">Alpha_Momentum_V3</span>
+<span class="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded">训练中</span>
+</div>
+<div class="flex justify-between text-[10px] text-on-surface-variant tabular-nums">
+<span>版本: 3.4.2-stable</span>
+<span>夏普比: 2.84</span>
+</div>
+</div>
+<!-- Inactive Models -->
+<div class="hover:bg-surface-container/50 p-3 rounded-lg group cursor-pointer transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-medium text-on-surface-variant group-hover:text-on-surface">Trend_Follower_X</span>
+<span class="px-1.5 py-0.5 bg-surface-container-highest text-on-surface-variant text-[10px] rounded">已部署</span>
+</div>
+<div class="flex justify-between text-[10px] text-outline tabular-nums">
+<span>版本: 1.0.0-gold</span>
+<span>夏普比: 1.95</span>
+</div>
+</div>
+<div class="hover:bg-surface-container/50 p-3 rounded-lg group cursor-pointer transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-medium text-on-surface-variant group-hover:text-on-surface">BTC_Mean_Reversion</span>
+<span class="px-1.5 py-0.5 bg-surface-container-highest text-on-surface-variant text-[10px] rounded">空闲</span>
+</div>
+<div class="flex justify-between text-[10px] text-outline tabular-nums">
+<span>版本: 0.9.1-beta</span>
+<span>夏普比: 3.12</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Scoring Preview -->
+<div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant/5">
+<h3 class="text-xs font-bold tracking-widest text-on-surface-variant mb-4 uppercase">实时打分预览 (Scoring)</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-outline">BTC/USDT 现价</span>
+<span class="tabular-nums font-mono">68,432.10</span>
+</div>
+<div class="relative h-24 w-full bg-surface-container rounded-lg overflow-hidden flex items-end">
+<div class="flex-1 bg-primary/20 h-3/4 mx-0.5 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/40 h-1/2 mx-0.5 rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[85%] mx-0.5 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/60 h-[60%] mx-0.5 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/30 h-[40%] mx-0.5 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/80 h-[95%] mx-0.5 rounded-t-sm"></div>
+</div>
+<div class="p-3 bg-primary-container/10 rounded border border-primary/20 text-center">
+<span class="text-[10px] text-primary block mb-1">多头置信度</span>
+<span class="text-xl font-bold headline-font text-primary">87.4%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Center: Model Details & SHAP (6 cols) -->
+<div class="col-span-6 space-y-6">
+<!-- Feature & Config -->
+<div class="bg-surface p-6 rounded-xl border border-outline-variant/10 shadow-xl">
+<div class="flex items-center gap-4 mb-6">
+<div class="flex-1">
+<h2 class="text-lg font-bold text-on-surface">Alpha_Momentum_V3 <span class="text-xs font-normal text-on-surface-variant ml-2">参数配置</span></h2>
+</div>
+<div class="flex bg-surface-container-lowest p-1 rounded-lg">
+<button class="px-3 py-1 text-[10px] bg-primary text-on-primary-container rounded shadow-sm">配置</button>
+<button class="px-3 py-1 text-[10px] text-on-surface-variant">日志</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-4">
+<label class="text-[10px] text-outline uppercase font-bold">输入特征 (Input Features)</label>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-2 bg-surface-container-low rounded border border-outline-variant/10">
+<span class="text-xs text-on-surface">Order_Flow_Imbalance</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex items-center justify-between p-2 bg-surface-container-low rounded border border-outline-variant/10">
+<span class="text-xs text-on-surface">Volatility_Zscore_1h</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex items-center justify-between p-2 bg-surface-container-low rounded border border-outline-variant/10 opacity-50">
+<span class="text-xs text-on-surface">Sentiment_Index_Twitter</span>
+<span class="material-symbols-outlined text-outline text-sm">cancel</span>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<label class="text-[10px] text-outline uppercase font-bold">超参数 (Hyperparameters)</label>
+<div class="space-y-3 pt-2">
+<div class="flex justify-between items-center">
+<span class="text-xs text-on-surface-variant">学习率 (Learning Rate)</span>
+<span class="text-xs text-on-surface tabular-nums">0.00045</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-1/3 h-full bg-primary"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-xs text-on-surface-variant">深度 (Depth)</span>
+<span class="text-xs text-on-surface tabular-nums">12</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-2/3 h-full bg-primary"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- SHAP Interpretation -->
+<div class="bg-surface p-6 rounded-xl border border-outline-variant/10 shadow-xl">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-sm font-bold text-on-surface">可解释性分析 (SHAP Analysis)</h2>
+<span class="text-[10px] text-outline">基于最近 1000 个采样点</span>
+</div>
+<div class="space-y-4">
+<!-- SHAP Bar 1 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[10px]">
+<span class="text-on-surface">RSI_Divergence</span>
+<span class="text-primary tabular-nums">+0.42</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex-1 h-2 bg-surface-container-lowest rounded-full overflow-hidden flex justify-center">
+<div class="w-[42%] h-full bg-primary ml-[10%]"></div>
+</div>
+</div>
+</div>
+<!-- SHAP Bar 2 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[10px]">
+<span class="text-on-surface">Volume_Spike</span>
+<span class="text-primary tabular-nums">+0.28</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex-1 h-2 bg-surface-container-lowest rounded-full overflow-hidden flex justify-center">
+<div class="w-[28%] h-full bg-primary ml-[5%]"></div>
+</div>
+</div>
+</div>
+<!-- SHAP Bar 3 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[10px]">
+<span class="text-on-surface">MACD_Cross</span>
+<span class="text-error tabular-nums">-0.15</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex-1 h-2 bg-surface-container-lowest rounded-full overflow-hidden flex justify-center">
+<div class="w-[15%] h-full bg-error mr-[20%]"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-outline-variant/10">
+<p class="text-[11px] text-on-surface-variant leading-relaxed">
+<span class="text-primary font-bold">分析结论：</span> 当前多头预测主要受 RSI 背离支撑，但 MACD 零轴下方交叉提供了反向阻力。模型建议在波动率降至 0.82 以下时执行入场。
+                            </p>
+</div>
+</div>
+</div>
+<!-- Right: Checklist & Comparison (3 cols) -->
+<div class="col-span-3 space-y-6">
+<!-- Deployment Checklist -->
+<div class="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10">
+<h3 class="text-xs font-bold tracking-widest text-on-surface-variant mb-4 uppercase">部署清单 (Checklist)</h3>
+<div class="space-y-4">
+<div class="flex gap-3">
+<div class="w-5 h-5 rounded bg-primary/20 flex items-center justify-center mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">数据完整性校验</p>
+<p class="text-[10px] text-outline">毫秒级延时测试通过</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-5 h-5 rounded bg-primary/20 flex items-center justify-center mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">回测净值覆盖</p>
+<p class="text-[10px] text-outline">2021-2023 历史数据</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-5 h-5 rounded border border-outline-variant/30 flex items-center justify-center mt-0.5"></div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">风险敞口限制</p>
+<p class="text-[10px] text-outline">需手动确认最大回撤 5%</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-5 h-5 rounded border border-outline-variant/30 flex items-center justify-center mt-0.5"></div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">风控逻辑同步</p>
+<p class="text-[10px] text-outline">SL/TP 自动挂单脚本</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Version Diff Mini-Table -->
+<div class="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10">
+<h3 class="text-xs font-bold tracking-widest text-on-surface-variant mb-4 uppercase">版本差异 (Diff)</h3>
+<table class="w-full text-left text-[10px]">
+<thead>
+<tr class="text-outline border-b border-outline-variant/10">
+<th class="pb-2 font-medium">指标</th>
+<th class="pb-2 font-medium">V3.4.1</th>
+<th class="pb-2 font-medium">V3.4.2</th>
+</tr>
+</thead>
+<tbody class="text-on-surface tabular-nums">
+<tr class="border-b border-outline-variant/5">
+<td class="py-2 text-on-surface-variant">夏普比</td>
+<td class="py-2">2.45</td>
+<td class="py-2 text-primary">2.84</td>
+</tr>
+<tr class="border-b border-outline-variant/5">
+<td class="py-2 text-on-surface-variant">胜率</td>
+<td class="py-2">52.1%</td>
+<td class="py-2 text-primary">56.4%</td>
+</tr>
+<tr class="border-b border-outline-variant/5">
+<td class="py-2 text-on-surface-variant">回撤</td>
+<td class="py-2">12.4%</td>
+<td class="py-2 text-primary">8.2%</td>
+</tr>
+<tr>
+<td class="py-2 text-on-surface-variant">频率</td>
+<td class="py-2">32次/日</td>
+<td class="py-2">45次/日</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Full-Width Bottom Status (Audit Log Feel) -->
+<div class="bg-surface-container-lowest p-4 rounded border border-outline-variant/5 flex justify-between items-center text-[10px] headline-font">
+<div class="flex gap-6 items-center">
+<span class="flex items-center gap-2 text-primary"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 核心引擎运行中</span>
+<span class="text-on-surface-variant">最后提交: b0f3a9e - 优化特征聚合逻辑</span>
+<span class="text-on-surface-variant">GPU 占用: 42% @ Tesla A100</span>
+</div>
+<div class="text-outline">
+                    SYSTEM_HASH: 0x82f...a12c | NODE_ID: HK-GW-04
+                </div>
+</div>
+</div>
+</main>
+</body></html>

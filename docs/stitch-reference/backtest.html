@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-Hans"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OBSIDIAN LEDGER - 回测实验室</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#2e3446",
+                        "background": "#0c1323",
+                        "surface-container": "#191f30",
+                        "primary-container": "#29a195",
+                        "tertiary-container": "#ca8100",
+                        "tertiary-fixed": "#ffddb8",
+                        "inverse-surface": "#dce2f9",
+                        "secondary-fixed": "#d8e3fb",
+                        "inverse-on-surface": "#293041",
+                        "outline": "#879391",
+                        "secondary": "#bcc7de",
+                        "on-primary-fixed": "#00201d",
+                        "primary-fixed": "#89f5e7",
+                        "on-primary-container": "#00302b",
+                        "tertiary": "#ffb95f",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-tertiary": "#472a00",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "inverse-primary": "#006a61",
+                        "secondary-container": "#3e495d",
+                        "outline-variant": "#3d4947",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "surface": "#0c1323",
+                        "on-secondary": "#263143",
+                        "surface-container-lowest": "#070e1e",
+                        "surface-bright": "#32394b",
+                        "on-error": "#690005",
+                        "surface-container-low": "#141b2c",
+                        "primary": "#6bd8cb",
+                        "on-secondary-fixed": "#111c2d",
+                        "on-background": "#dce2f9",
+                        "surface-tint": "#6bd8cb",
+                        "on-tertiary-container": "#3e2400",
+                        "on-primary-fixed-variant": "#005049",
+                        "surface-container-high": "#232a3b",
+                        "on-surface-variant": "#bcc9c6",
+                        "surface-dim": "#0c1323",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-tertiary-fixed": "#2a1700",
+                        "error": "#ffb4ab",
+                        "on-primary": "#003732",
+                        "on-secondary-container": "#aeb9d0",
+                        "error-container": "#93000a",
+                        "on-surface": "#dce2f9",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#2e3446"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0c1323;
+            color: #dce2f9;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-panel {
+            background: rgba(35, 42, 59, 0.85);
+            backdrop-filter: blur(20px);
+        }
+        /* Style for date input to look better in dark theme */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 flex flex-col bg-[#070e1e] border-r border-[#3d4947]/10 shadow-[4px_0_24px_rgba(11,18,34,0.5)] z-40">
+<div class="px-6 py-8 flex flex-col items-start">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#6bd8cb] to-[#29a195] flex items-center justify-center">
+<span class="material-symbols-outlined text-[#003732]" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div>
+<h2 class="text-[#6bd8cb] font-bold text-lg tracking-wider">QUANT_ADMIN</h2>
+<p class="text-[#bcc9c6] text-[10px] uppercase tracking-tighter">高级交易员</p>
+</div>
+</div>
+<nav class="w-full space-y-1">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-xs font-medium">总览面板</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">search_check</span>
+<span class="text-xs font-medium">扫描器</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="text-xs font-medium">监控中心</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="text-xs font-medium">风险管理</span>
+</a>
+<a class="bg-gradient-to-r from-[#6bd8cb]/10 to-transparent text-[#6bd8cb] border-l-4 border-[#6bd8cb] flex items-center gap-3 px-4 py-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history_toggle_off</span>
+<span class="text-xs font-medium">策略回测</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-xs font-medium">分析工作台</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="text-xs font-medium">审计日志</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto px-4 pb-8 space-y-4">
+<button class="w-full py-3 bg-gradient-to-r from-[#6bd8cb] to-[#29a195] text-[#003732] font-bold text-xs rounded-lg hover:opacity-90 transition-opacity">
+                新策略
+            </button>
+<div class="border-t border-[#3d4947]/10 pt-4 space-y-1">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:bg-[#232a3b]/50 transition-all text-xs font-medium" href="#">
+<span class="material-symbols-outlined text-sm">settings</span>
+                    系统设置
+                </a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:bg-[#232a3b]/50 transition-all text-xs font-medium" href="#">
+<span class="material-symbols-outlined text-sm text-error">logout</span>
+                    退出登录
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="h-14 flex justify-between items-center w-full px-6 sticky top-0 z-50 bg-[#0c1323]/30 backdrop-blur-md border-b border-[#3d4947]/15 font-['Space_Grotesk'] text-sm tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-widest text-[#6bd8cb] bg-gradient-to-r from-[#6bd8cb] to-[#29a195] bg-clip-text text-transparent">OBSIDIAN LEDGER</span>
+<nav class="flex items-center gap-6">
+<span class="text-[#6bd8cb] border-b-2 border-[#6bd8cb] pb-1 cursor-default">实盘模式</span>
+<span class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors cursor-pointer">连接成功</span>
+<span class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors cursor-pointer tabular-nums">14:32:05 UTC+8</span>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="text-[#bcc9c6] hover:bg-[#232a3b] p-1.5 rounded transition-all"><span class="material-symbols-outlined text-xl">notifications</span></button>
+<button class="text-[#bcc9c6] hover:bg-[#232a3b] p-1.5 rounded transition-all"><span class="material-symbols-outlined text-xl">settings</span></button>
+</div>
+<div class="h-8 w-8 rounded-full bg-[#232a3b] border border-[#3d4947]/30 overflow-hidden">
+<img alt="用户头像" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtUlPn7BQv2WLNWGutYh2ZqNIRukHep-6bcqLDmLHrwYA4IZp056jnpq7o-3ZNVhU8WxeahdcX5RlE2C9bI_sVBhpVLXPEFsymLBR1nL5vCTlX0XydL3ICxZ5RkbobMdJm3iD4S6Z3670ceN4AGGyJ-4L2rn0Kl9qQVcH3WdIzw68MD7D65R-s0p88ro0efQ62fSv70DKsdEIX49U_6C30L7i1eBbdT8ExYCU50YfDhvOruhAEYjkrqTq71qyPUJMRQEuEK-JLqRoI"/>
+</div>
+</div>
+</header>
+<!-- Backtest Lab Content -->
+<div class="flex-1 p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="font-headline text-2xl font-bold text-[#dce2f9]">回测实验室 <span class="text-primary-fixed-dim text-sm font-normal ml-2 tracking-widest opacity-60">/ BACKTESTING LAB</span></h1>
+<p class="text-on-surface-variant text-sm mt-1">BTC/USDT 永续合约回测引擎 v4.2.0</p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2 border border-outline-variant/30 text-on-surface text-sm font-medium rounded hover:bg-surface-container-high transition-colors">导出报告</button>
+<button class="px-6 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary-container text-sm font-bold rounded shadow-lg shadow-primary/10 hover:opacity-90 transition-all">执行回测</button>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Left Column: Configuration -->
+<div class="col-span-12 lg:col-span-3 space-y-6">
+<!-- Strategy Config -->
+<section class="bg-surface-container-low p-5 rounded-lg border-l-2 border-primary/20">
+<h3 class="text-xs font-bold text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">tune</span> 策略配置
+                        </h3>
+<div class="space-y-4">
+<div>
+<label class="block text-[10px] text-on-surface-variant uppercase mb-1">策略选择</label>
+<select class="w-full bg-surface-container-highest border-none text-on-surface text-xs p-2 rounded focus:ring-1 focus:ring-primary">
+<option>多重均线趋势追踪 (MA-CROSS-v2)</option>
+<option>均值回归统计套利 (STAT-ARB)</option>
+<option>波动率突破策略 (VOL-BREAK)</option>
+</select>
+</div>
+<div>
+<label class="block text-[10px] text-on-surface-variant uppercase mb-1">执行模式</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="bg-primary/20 text-primary text-[11px] py-1.5 rounded border border-primary/30">逐笔匹配</button>
+<button class="bg-surface-container-highest text-on-surface-variant text-[11px] py-1.5 rounded hover:text-on-surface">K线模拟</button>
+</div>
+</div>
+<div>
+<label class="block text-[10px] text-on-surface-variant uppercase mb-1">时间范围</label>
+<div class="space-y-2">
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none text-on-surface text-xs px-3 py-2.5 rounded tabular-nums focus:ring-1 focus:ring-primary" type="date" value="2023-01-01"/>
+</div>
+<div class="flex justify-center">
+<span class="text-on-surface-variant text-[10px]">至</span>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none text-on-surface text-xs px-3 py-2.5 rounded tabular-nums focus:ring-1 focus:ring-primary" type="date" value="2023-12-31"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Parameter Panel -->
+<section class="bg-surface-container-low p-5 rounded-lg border-l-2 border-tertiary/20">
+<h3 class="text-xs font-bold text-tertiary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">science</span> 参数矩阵
+                        </h3>
+<div class="space-y-5">
+<div>
+<div class="flex justify-between mb-2">
+<label class="text-[10px] text-on-surface-variant uppercase">收益阈值 (Alpha)</label>
+<span class="text-xs text-on-surface tabular-nums">2.4%</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-tertiary" type="range"/>
+</div>
+<div>
+<div class="flex justify-between mb-2">
+<label class="text-[10px] text-on-surface-variant uppercase">滑点假设 (Bps)</label>
+<span class="text-xs text-on-surface tabular-nums">5.0</span>
+</div>
+<div class="grid grid-cols-5 gap-1">
+<button class="bg-surface-container-highest text-[9px] py-1 rounded">2</button>
+<button class="bg-tertiary/20 text-tertiary text-[9px] py-1 rounded border border-tertiary/30">5</button>
+<button class="bg-surface-container-highest text-[9px] py-1 rounded">10</button>
+<button class="bg-surface-container-highest text-[9px] py-1 rounded">15</button>
+<button class="bg-surface-container-highest text-[9px] py-1 rounded">20</button>
+</div>
+</div>
+<div>
+<label class="block text-[10px] text-on-surface-variant uppercase mb-2">风控阈值 (Drawdown Limit)</label>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none text-on-surface text-xs p-2 pr-8 rounded" type="text" value="15.00"/>
+<span class="absolute right-3 top-2 text-[10px] text-on-surface-variant">%</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Middle Column: Results & Charts -->
+<div class="col-span-12 lg:col-span-6 space-y-6">
+<!-- Result Overview -->
+<div class="grid grid-cols-3 gap-4">
+<div class="bg-surface-container p-4 rounded-lg">
+<p class="text-[10px] text-on-surface-variant uppercase mb-1">总收益率 (Total Return)</p>
+<div class="flex items-baseline gap-2">
+<h4 class="font-headline text-2xl font-bold text-primary tabular-nums">+142.85%</h4>
+<span class="material-symbols-outlined text-primary text-sm">trending_up</span>
+</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg">
+<p class="text-[10px] text-on-surface-variant uppercase mb-1">最大回撤 (Max Drawdown)</p>
+<div class="flex items-baseline gap-2">
+<h4 class="font-headline text-2xl font-bold text-error tabular-nums">-12.41%</h4>
+<span class="material-symbols-outlined text-error text-sm">trending_down</span>
+</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg">
+<p class="text-[10px] text-on-surface-variant uppercase mb-1">夏普比率 (Sharpe Ratio)</p>
+<div class="flex items-baseline gap-2">
+<h4 class="font-headline text-2xl font-bold text-tertiary tabular-nums">2.84</h4>
+<span class="material-symbols-outlined text-tertiary text-sm">verified</span>
+</div>
+</div>
+</div>
+<!-- Equity Curve Chart -->
+<section class="bg-surface-container p-6 rounded-lg h-[400px] relative flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span> 净值曲线 (Equity Curve)
+                            </h3>
+<div class="flex gap-2">
+<button class="text-[9px] px-2 py-0.5 bg-surface-container-highest text-on-surface rounded">Log Scale</button>
+<button class="text-[9px] px-2 py-0.5 border border-outline-variant/30 text-on-surface-variant rounded">Benchmarks</button>
+</div>
+</div>
+<div class="flex-1 relative">
+<!-- High-Fidelity SVG Line Chart -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 800 240">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#6bd8cb" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#6bd8cb" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Grid Lines -->
+<g class="text-[#3d4947]/30">
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="0" x2="800" y1="40" y2="40"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="0" x2="800" y1="80" y2="80"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="0" x2="800" y1="120" y2="120"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="0" x2="800" y1="160" y2="160"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="0" x2="800" y1="200" y2="200"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="160" x2="160" y1="0" y2="240"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="320" x2="320" y1="0" y2="240"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="480" x2="480" y1="0" y2="240"></line>
+<line stroke="currentColor" stroke-dasharray="4" stroke-width="0.5" x1="640" x2="640" y1="0" y2="240"></line>
+</g>
+<!-- Area under line -->
+<path d="M 0,220 Q 80,210 160,180 T 320,150 T 480,100 T 640,60 T 800,40 L 800,240 L 0,240 Z" fill="url(#chartGradient)"></path>
+<!-- Line Chart -->
+<path d="M 0,220 Q 80,210 160,180 T 320,150 T 480,100 T 640,60 T 800,40" fill="none" stroke="#6bd8cb" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Data Point Highlight -->
+<circle class="animate-pulse" cx="580" cy="75" fill="#6bd8cb" r="5"></circle>
+</svg>
+<!-- Axes Labels -->
+<div class="absolute inset-0 pointer-events-none text-[9px] text-on-surface-variant font-['Space_Grotesk']">
+<div class="absolute left-0 bottom-[-20px] flex w-full justify-between px-2">
+<span>2023-01</span>
+<span>2023-04</span>
+<span>2023-07</span>
+<span>2023-10</span>
+<span>2023-12</span>
+</div>
+<div class="absolute top-0 right-[-30px] h-full flex flex-col justify-between py-1 text-right">
+<span>1.5M</span>
+<span>1.2M</span>
+<span>900K</span>
+<span>600K</span>
+<span>300K</span>
+<span>0</span>
+</div>
+</div>
+<!-- Tooltip Overlay -->
+<div class="absolute top-10 left-1/2 -translate-x-1/2 p-3 glass-panel rounded border border-primary/20 shadow-2xl z-10 min-w-[180px]">
+<div class="flex justify-between gap-4 mb-2">
+<span class="text-[10px] text-on-surface-variant">日期:</span>
+<span class="text-[10px] text-on-surface font-medium font-['Space_Grotesk']">2023-08-14</span>
+</div>
+<div class="flex justify-between gap-4 mb-1">
+<span class="text-[10px] text-on-surface-variant">净值:</span>
+<span class="text-xs text-primary font-bold tabular-nums font-['Space_Grotesk']">1,284,502.20</span>
+</div>
+<div class="flex justify-between gap-4">
+<span class="text-[10px] text-on-surface-variant">盈利:</span>
+<span class="text-xs text-primary font-bold tabular-nums font-['Space_Grotesk']">+1,204.15</span>
+</div>
+<div class="mt-2 pt-2 border-t border-outline-variant/10 flex justify-center">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Drawdown Chart -->
+<section class="bg-surface-container p-4 rounded-lg h-[150px] relative">
+<div class="flex justify-between items-center mb-2">
+<h3 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">回测回撤 (Drawdown Depth)</h3>
+</div>
+<div class="w-full h-24 bg-surface-container-low relative overflow-hidden rounded">
+<div class="absolute top-0 left-0 w-full h-full bg-error/5 flex items-start">
+<div class="flex-1 bg-error/30 h-[20%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[35%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[10%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[5%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[60%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[45%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[30%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[15%] border-b border-error/50"></div>
+<div class="flex-1 bg-error/30 h-[8%] border-b border-error/50"></div>
+</div>
+<div class="absolute bottom-1 right-2 text-[9px] text-on-surface-variant tabular-nums">0%</div>
+<div class="absolute top-1 right-2 text-[9px] text-error tabular-nums">-12%</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Heatmap & Details -->
+<div class="col-span-12 lg:col-span-3 space-y-6">
+<!-- Parameter Sensitivity Heatmap -->
+<section class="bg-surface-container p-5 rounded-lg flex flex-col h-[400px]">
+<h3 class="text-xs font-bold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">grid_view</span> 参数敏感度热力图
+                        </h3>
+<div class="flex-1 flex flex-col">
+<div class="flex-1 grid grid-cols-6 grid-rows-6 gap-0.5">
+<div class="bg-primary/20 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/30 rounded-sm"></div><div class="bg-primary/50 rounded-sm"></div><div class="bg-primary/60 rounded-sm"></div><div class="bg-primary/10 rounded-sm"></div>
+<div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/60 rounded-sm"></div><div class="bg-primary/70 rounded-sm"></div><div class="bg-primary/90 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/20 rounded-sm"></div>
+<div class="bg-primary/30 rounded-sm"></div><div class="bg-primary/70 rounded-sm"></div><div class="bg-primary/100 rounded-sm border border-primary/50 shadow-[0_0_10px_rgba(107,216,203,0.3)]"></div><div class="bg-primary/80 rounded-sm"></div><div class="bg-primary/50 rounded-sm"></div><div class="bg-primary/30 rounded-sm"></div>
+<div class="bg-primary/50 rounded-sm"></div><div class="bg-primary/90 rounded-sm"></div><div class="bg-primary/80 rounded-sm"></div><div class="bg-primary/60 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/20 rounded-sm"></div>
+<div class="bg-primary/60 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/50 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/30 rounded-sm"></div><div class="bg-primary/10 rounded-sm"></div>
+<div class="bg-primary/10 rounded-sm"></div><div class="bg-primary/20 rounded-sm"></div><div class="bg-primary/30 rounded-sm"></div><div class="bg-primary/20 rounded-sm"></div><div class="bg-primary/10 rounded-sm"></div><div class="bg-primary/5 rounded-sm"></div>
+</div>
+<div class="mt-4 flex justify-between text-[10px] text-on-surface-variant">
+<span>周期 (Lookback)</span>
+<span>杠杆 (Leverage)</span>
+</div>
+<div class="mt-2 flex items-center justify-center gap-2">
+<span class="text-[9px] text-on-surface-variant">低收益</span>
+<div class="w-24 h-1.5 rounded bg-gradient-to-r from-primary/10 to-primary"></div>
+<span class="text-[9px] text-on-surface-variant">高收益</span>
+</div>
+</div>
+</section>
+<!-- Trade Summary Table -->
+<section class="bg-surface-container-low p-5 rounded-lg">
+<h3 class="text-xs font-bold text-on-surface mb-4">交易统计摘要</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-xs">
+<span class="text-on-surface-variant">总交易笔数</span>
+<span class="text-on-surface tabular-nums">428</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-on-surface-variant">胜率 (Win Rate)</span>
+<span class="text-on-surface tabular-nums">64.2%</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-on-surface-variant">盈亏比 (P/L Ratio)</span>
+<span class="text-on-surface tabular-nums">1.82</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-on-surface-variant">平均每笔盈亏</span>
+<span class="text-primary tabular-nums">0.34%</span>
+</div>
+<div class="pt-2 border-t border-outline-variant/10">
+<div class="flex justify-between items-center text-xs">
+<span class="text-on-surface-variant">恢复因子</span>
+<span class="text-tertiary tabular-nums">11.51</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Bottom Table Section (Recent Backtests) -->
+<section class="bg-surface-container rounded-lg overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant/10 flex justify-between items-center">
+<h3 class="text-sm font-bold">历史回测记录</h3>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-on-surface">filter_list</span>
+</div>
+</div>
+<table class="w-full text-left">
+<thead class="bg-surface-container-low text-[10px] uppercase tracking-wider text-on-surface-variant">
+<tr>
+<th class="px-6 py-3 font-medium">任务ID</th>
+<th class="px-6 py-3 font-medium">策略模型</th>
+<th class="px-6 py-3 font-medium">时间段</th>
+<th class="px-6 py-3 font-medium text-right">总收益</th>
+<th class="px-6 py-3 font-medium text-right">夏普</th>
+<th class="px-6 py-3 font-medium text-right">回撤</th>
+<th class="px-6 py-3 font-medium text-center">状态</th>
+</tr>
+</thead>
+<tbody class="text-xs divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="px-6 py-4 font-mono text-on-surface-variant">#BK-9421</td>
+<td class="px-6 py-4 text-on-surface">MA-CROSS-v2 (Aggressive)</td>
+<td class="px-6 py-4 text-on-surface-variant tabular-nums">2023-Q1</td>
+<td class="px-6 py-4 text-primary text-right font-bold tabular-nums">+42.1%</td>
+<td class="px-6 py-4 text-on-surface text-right tabular-nums">2.14</td>
+<td class="px-6 py-4 text-error text-right tabular-nums">-8.2%</td>
+<td class="px-6 py-4 text-center">
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-[2px] text-[10px]">SUCCESS</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="px-6 py-4 font-mono text-on-surface-variant">#BK-9418</td>
+<td class="px-6 py-4 text-on-surface">STAT-ARB (High Freq)</td>
+<td class="px-6 py-4 text-on-surface-variant tabular-nums">2023-Q1</td>
+<td class="px-6 py-4 text-primary text-right font-bold tabular-nums">+12.5%</td>
+<td class="px-6 py-4 text-on-surface text-right tabular-nums">4.82</td>
+<td class="px-6 py-4 text-error text-right tabular-nums">-2.1%</td>
+<td class="px-6 py-4 text-center">
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-[2px] text-[10px]">SUCCESS</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer group opacity-50">
+<td class="px-6 py-4 font-mono text-on-surface-variant">#BK-9415</td>
+<td class="px-6 py-4 text-on-surface">VOL-BREAK (Daily)</td>
+<td class="px-6 py-4 text-on-surface-variant tabular-nums">2023-Q1</td>
+<td class="px-6 py-4 text-error text-right font-bold tabular-nums">-5.4%</td>
+<td class="px-6 py-4 text-on-surface text-right tabular-nums">0.82</td>
+<td class="px-6 py-4 text-error text-right tabular-nums">-14.5%</td>
+<td class="px-6 py-4 text-center">
+<span class="px-2 py-0.5 bg-outline-variant/30 text-on-surface-variant rounded-[2px] text-[10px]">FAILED</span>
+</td>
+</tr>
+</tbody>
+</table>
+</section>
+</div>
+<!-- Status Bar -->
+<footer class="h-8 bg-[#070e1e] border-t border-[#3d4947]/10 flex items-center px-6 justify-between text-[10px] text-on-surface-variant tabular-nums">
+<div class="flex gap-4">
+<span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>引擎状态: 运行中</span>
+<span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>GPU 加速: 已开启</span>
+<span class="flex items-center gap-1.5">回测队列: 0 任务</span>
+</div>
+<div class="flex gap-4">
+<span>内存占用: 4.2 GB</span>
+<span>响应延迟: 14ms</span>
+<span class="text-primary font-bold">V 4.2.0-STABLE</span>
+</div>
+</footer>
+</main>
+</body></html>

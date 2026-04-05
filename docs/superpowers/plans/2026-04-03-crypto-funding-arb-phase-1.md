@@ -10,6 +10,37 @@
 
 ---
 
+## Implementation Status Update
+
+As of `2026-04-05`, this plan has been materially exceeded. Phase 1 is no longer just a vertical slice for two pages.
+
+### Already delivered in the active worktree
+
+1. Repo bootstrap and typed backend/frontend foundations.
+2. Real Binance public read path with fallback handling.
+3. Dashboard and scan APIs backed by `ConsoleReadService`.
+4. Stitch-aligned console skeleton for all 7 planned operator pages.
+5. Explainable scoring engine with projected edge and payback semantics.
+6. Strategy registry and default `funding-arb` runtime.
+7. Risk policy layer with `allow / review / block`.
+8. Deterministic backtest engine and algo API surface.
+9. Offline adaptation recommendation service with:
+   - `保守 / 平衡 / 进取 / 自动推荐`
+   - manual confirmation before apply
+   - runtime tuning state persistence
+
+### Still missing after this phase
+
+1. Authenticated execution and order orchestration.
+2. Persistent trade / position ledger.
+3. Historical market and trade data ingestion.
+4. Frontend wiring for backtest, adaptation, and model tuning.
+5. Live rebalance, circuit-breaker, and recovery workers.
+
+### How to read the rest of this file
+
+The task list below remains useful as the original phase-1 execution baseline, but it is no longer an exact reflection of current repository status. Treat it as the historical implementation plan that got us here.
+
 ## Scope Decision
 
 The approved design is too large for a single implementation plan. This document covers only:
@@ -24,11 +55,12 @@ The approved design is too large for a single implementation plan. This document
 Deferred to later plans:
 
 1. Authenticated Binance trading
-2. Risk guard and circuit breakers
+2. Live risk guard workers and circuit breakers
 3. Hedge manager and rebalance loop
-4. Audit center
-5. Backtest / replay
-6. Model workbench
+4. Durable audit storage
+5. Historical data replay at scale
+6. Model workbench frontend wiring
+7. Adaptation center frontend wiring
 
 ## Planned File Structure
 

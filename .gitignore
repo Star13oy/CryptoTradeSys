@@ -8,3 +8,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 .env
+*.out.log
+*.err.log
+backend/.tmp-test-state/
+backend/backend/

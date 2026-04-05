@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-Hans"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#2e3446",
+                    "background": "#0c1323",
+                    "surface-container": "#191f30",
+                    "primary-container": "#29a195",
+                    "tertiary-container": "#ca8100",
+                    "tertiary-fixed": "#ffddb8",
+                    "inverse-surface": "#dce2f9",
+                    "secondary-fixed": "#d8e3fb",
+                    "inverse-on-surface": "#293041",
+                    "outline": "#879391",
+                    "secondary": "#bcc7de",
+                    "on-primary-fixed": "#00201d",
+                    "primary-fixed": "#89f5e7",
+                    "on-primary-container": "#00302b",
+                    "tertiary": "#ffb95f",
+                    "primary-fixed-dim": "#6bd8cb",
+                    "on-tertiary": "#472a00",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "on-secondary-fixed-variant": "#3c475a",
+                    "inverse-primary": "#006a61",
+                    "secondary-container": "#3e495d",
+                    "outline-variant": "#3d4947",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "surface": "#0c1323",
+                    "on-secondary": "#263143",
+                    "surface-container-lowest": "#070e1e",
+                    "surface-bright": "#32394b",
+                    "on-error": "#690005",
+                    "surface-container-low": "#141b2c",
+                    "primary": "#6bd8cb",
+                    "on-secondary-fixed": "#111c2d",
+                    "on-background": "#dce2f9",
+                    "surface-tint": "#6bd8cb",
+                    "on-tertiary-container": "#3e2400",
+                    "on-primary-fixed-variant": "#005049",
+                    "surface-container-high": "#232a3b",
+                    "on-surface-variant": "#bcc9c6",
+                    "surface-dim": "#0c1323",
+                    "secondary-fixed-dim": "#bcc7de",
+                    "on-tertiary-fixed": "#2a1700",
+                    "error": "#ffb4ab",
+                    "on-primary": "#003732",
+                    "on-secondary-container": "#aeb9d0",
+                    "error-container": "#93000a",
+                    "on-surface": "#dce2f9",
+                    "on-error-container": "#ffdad6",
+                    "surface-variant": "#2e3446"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Space Grotesk', sans-serif; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-panel {
+            background: rgba(35, 42, 59, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex overflow-hidden">
+<aside class="fixed left-0 top-0 h-full w-64 flex flex-col bg-[#070e1e] border-r border-[#3d4947]/10 shadow-[4px_0_24px_rgba(11,18,34,0.5)] z-50">
+<div class="px-6 py-8">
+<h1 class="text-[#6bd8cb] font-bold text-xl tracking-wider font-headline">QUANT_ADMIN</h1>
+<p class="text-[#bcc9c6] text-[10px] mt-1 opacity-60">高级交易员终端</p>
+</div>
+<nav class="flex-1 space-y-1 px-2 overflow-y-auto">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<span class="text-xs font-medium">总览面板</span>
+</a>
+<a class="bg-gradient-to-r from-[#6bd8cb]/10 to-transparent text-[#6bd8cb] border-l-4 border-[#6bd8cb] flex items-center gap-3 px-4 py-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">search_check</span>
+<span class="text-xs font-medium">扫描器</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">monitoring</span>
+<span class="text-xs font-medium">监控中心</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">security</span>
+<span class="text-xs font-medium">风险管理</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">history_toggle_off</span>
+<span class="text-xs font-medium">策略回测</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">analytics</span>
+<span class="text-xs font-medium">分析工作台</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">terminal</span>
+<span class="text-xs font-medium">审计日志</span>
+</a>
+</nav>
+<div class="px-4 py-6 border-t border-[#3d4947]/10 space-y-1">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold text-xs py-3 rounded-lg flex items-center justify-center gap-2 mb-4 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+                新策略
+            </button>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:text-[#dce2f9] text-xs transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+                系统设置
+            </a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:text-error text-xs transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">logout</span>
+                退出登录
+            </a>
+</div>
+</aside>
+<main class="flex-1 ml-64 flex flex-col min-w-0 bg-background overflow-hidden relative">
+<header class="h-14 bg-[#0c1323] border-b border-[#3d4947]/15 flex justify-between items-center px-6 sticky top-0 z-40 backdrop-blur-md bg-opacity-70">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-widest text-[#6bd8cb] bg-gradient-to-r from-[#6bd8cb] to-[#29a195] bg-clip-text text-transparent font-headline">OBSIDIAN LEDGER</span>
+<nav class="hidden md:flex gap-6 items-center">
+<span class="text-[#6bd8cb] border-b-2 border-[#6bd8cb] pb-1 font-headline text-sm tracking-tight tabular-nums cursor-default">实盘模式</span>
+<span class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors font-headline text-sm tracking-tight tabular-nums cursor-pointer">连接成功</span>
+<span class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors font-headline text-sm tracking-tight tabular-nums cursor-pointer">15:42:01 UTC</span>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-[#232a3b]/40 px-3 py-1.5 rounded border border-[#3d4947]/20">
+<span class="material-symbols-outlined text-primary text-sm mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs text-on-surface w-48 placeholder:text-[#3d4947]" placeholder="全域搜索..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-[#bcc9c6] hover:text-primary transition-colors p-1.5">notifications</button>
+<button class="material-symbols-outlined text-[#bcc9c6] hover:text-primary transition-colors p-1.5">settings</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img alt="用户头像" class="w-full h-full object-cover" data-alt="close-up portrait of a professional male trader with glasses and a focused expression in a dark studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV3SxYwn-pXQszEi6Oqeg2j1WF_SCeoM-wcBS7jtg1FbzYIwWqzG-n8lj3navOTsELq0iI_brlhsPrp_Ux5yig0ILNR3mifMjsdgAIVTZbvivVmlORkRzmQXqEQMfLAW2apILFfPRwAvASsz7x4u_X2TFKicxY5yHW8WbHN4kO4C1Y2rJ_ZjYbYCieWIxHTTYmZtYlixORoxJN5qBTUM4Xnqy77fM9ljA0YkHuDkGDUplfXdLk09zBrB3uMVni9zhbssOEcEkpMWrb"/>
+</div>
+</div>
+</header>
+<div class="p-6 space-y-6 flex-1 overflow-y-auto">
+<div class="flex items-center justify-between mb-2">
+<div>
+<h2 class="text-2xl font-bold font-headline text-on-surface tracking-tight">机会扫描器 (Scanner)</h2>
+<p class="text-on-surface-variant text-xs mt-1">实时跨市场套利与基差机会自动检测引擎</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface-container-high border border-outline-variant/20 rounded text-xs text-on-surface font-medium hover:bg-surface-container-highest transition-colors">导出报表</button>
+<button class="px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded text-xs font-bold flex items-center gap-2 hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                        即时扫描
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-surface-container-low rounded-xl border border-outline-variant/10 shadow-sm">
+<div class="space-y-1.5">
+<label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">交易对搜索</label>
+<div class="relative">
+<input class="w-full bg-background border border-outline-variant/30 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="例如: BTC/USDT" type="text"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">收益阈值 (Annualized)</label>
+<select class="w-full bg-background border border-outline-variant/30 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-on-surface appearance-none">
+<option>&gt; 5% 年化收益</option>
+<option selected="">&gt; 10% 年化收益</option>
+<option>&gt; 20% 年化收益</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">风险等级</label>
+<div class="flex gap-2 p-1 bg-background rounded border border-outline-variant/30">
+<button class="flex-1 py-1 text-[10px] rounded bg-primary/10 text-primary font-bold">全部</button>
+<button class="flex-1 py-1 text-[10px] rounded text-on-surface-variant hover:text-on-surface">低</button>
+<button class="flex-1 py-1 text-[10px] rounded text-on-surface-variant hover:text-on-surface">中</button>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">活跃市场</label>
+<div class="flex gap-2">
+<span class="px-3 py-2 bg-surface-container-highest rounded text-[10px] flex items-center gap-2 border border-outline-variant/30">Binance <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div></span>
+<span class="px-3 py-2 bg-surface-container-highest rounded text-[10px] flex items-center gap-2 border border-outline-variant/30">OKX <div class="w-1.5 h-1.5 rounded-full bg-primary"></div></span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container rounded-xl overflow-hidden shadow-2xl border border-outline-variant/5">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant/10">
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">交易对</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">现货价</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">永续价</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">基差 (Basis)</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">当前 Funding</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">预估净收益</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-center">推荐等级</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-highest/50 transition-colors cursor-pointer group border-l-4 border-transparent hover:border-primary">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">₿</div>
+<div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">$</div>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">BTC/USDT</div>
+<div class="text-[10px] text-on-surface-variant">Binance - Spot/Perp</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">64,231.50</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">64,302.20</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-primary font-medium">+70.70 (0.11%)</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-tertiary">0.0100%</td>
+<td class="px-6 py-5 text-right">
+<div class="text-sm font-bold text-primary tabular-nums">12.4% <span class="text-[10px] font-normal text-on-surface-variant">APY</span></div>
+</td>
+<td class="px-6 py-5 text-center">
+<span class="px-2 py-1 bg-primary/20 text-primary text-[10px] font-bold rounded border border-primary/30 uppercase">Strong Buy</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors cursor-pointer border-l-4 border-transparent hover:border-primary">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">Ξ</div>
+<div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">$</div>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">ETH/USDT</div>
+<div class="text-[10px] text-on-surface-variant">OKX - Spot/Perp</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">3,450.12</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">3,448.90</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-error font-medium">-1.22 (-0.03%)</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-on-surface-variant">0.0085%</td>
+<td class="px-6 py-5 text-right">
+<div class="text-sm font-bold text-on-surface tabular-nums">8.2% <span class="text-[10px] font-normal text-on-surface-variant">APY</span></div>
+</td>
+<td class="px-6 py-5 text-center">
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded border border-outline-variant/30 uppercase">Neutral</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors cursor-pointer border-l-4 border-transparent hover:border-primary">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">S</div>
+<div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">$</div>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">SOL/USDT</div>
+<div class="text-[10px] text-on-surface-variant">Binance - Spot/Perp</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">145.67</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">147.20</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-primary font-medium">+1.53 (1.05%)</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-tertiary">0.0210%</td>
+<td class="px-6 py-5 text-right">
+<div class="text-sm font-bold text-primary tabular-nums">24.5% <span class="text-[10px] font-normal text-on-surface-variant">APY</span></div>
+</td>
+<td class="px-6 py-5 text-center">
+<span class="px-2 py-1 bg-tertiary/20 text-tertiary text-[10px] font-bold rounded border border-tertiary/30 uppercase">Hot Opportunity</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors cursor-pointer border-l-4 border-transparent hover:border-primary">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">D</div>
+<div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white border border-background">$</div>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">DOT/USDT</div>
+<div class="text-[10px] text-on-surface-variant">OKX - Spot/Perp</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">8.24</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums">8.31</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-primary font-medium">+0.07 (0.85%)</td>
+<td class="px-6 py-5 text-right font-headline text-sm tabular-nums text-on-surface-variant">0.0100%</td>
+<td class="px-6 py-5 text-right">
+<div class="text-sm font-bold text-primary tabular-nums">15.8% <span class="text-[10px] font-normal text-on-surface-variant">APY</span></div>
+</td>
+<td class="px-6 py-5 text-center">
+<span class="px-2 py-1 bg-primary/20 text-primary text-[10px] font-bold rounded border border-primary/30 uppercase">Buy</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<aside class="w-96 glass-panel border-l border-outline-variant/20 fixed right-0 top-14 h-[calc(100vh-3.5rem)] z-30 shadow-[-10px_0_30px_rgba(0,0,0,0.3)] flex flex-col p-6 overflow-y-auto">
+<div class="flex items-center justify-between mb-8">
+<div>
+<div class="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-1">机会详情</div>
+<h3 class="text-xl font-bold font-headline tracking-tight">BTC/USDT 套利分析</h3>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">close</button>
+</div>
+<div class="space-y-6">
+<div class="bg-background/40 p-4 rounded-lg border border-outline-variant/10 space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-xs text-on-surface-variant">预计 24h 收益率</span>
+<span class="text-sm font-bold text-primary font-headline tabular-nums">+0.045%</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-xs text-on-surface-variant">预计年化收益率 (APY)</span>
+<span class="text-sm font-bold text-primary font-headline tabular-nums">12.42%</span>
+</div>
+<div class="h-1 bg-outline-variant/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[65%] shadow-[0_0_8px_rgba(107,216,203,0.5)]"></div>
+</div>
+</div>
+<div>
+<h4 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">收益构成明细</h4>
+<div class="space-y-4">
+<div class="flex items-start gap-4">
+<div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-lg">trending_up</span>
+</div>
+<div class="flex-1">
+<div class="text-xs font-bold mb-0.5">基差回归收益 (Basis Convergence)</div>
+<div class="text-[10px] text-on-surface-variant">当前基差 0.11%，预计 3 日内完成回归</div>
+<div class="text-xs font-bold text-primary mt-1 font-headline tabular-nums">+38.50 USDT</div>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-8 h-8 rounded bg-tertiary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary text-lg">payments</span>
+</div>
+<div class="flex-1">
+<div class="text-xs font-bold mb-0.5">资金费率收益 (Funding Fees)</div>
+<div class="text-[10px] text-on-surface-variant">基于平均 0.01% 费率，每日收取 3 次</div>
+<div class="text-xs font-bold text-tertiary mt-1 font-headline tabular-nums">+12.20 USDT / Day</div>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-4 border-t border-outline-variant/10">
+<h4 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">风险评估参数</h4>
+<div class="grid grid-cols-2 gap-3">
+<div class="p-3 bg-surface-container-low rounded border border-outline-variant/5">
+<div class="text-[9px] text-on-surface-variant mb-1 uppercase">流动性系数</div>
+<div class="text-sm font-bold font-headline tabular-nums">0.98 <span class="text-[10px] text-primary font-normal ml-1">优</span></div>
+</div>
+<div class="p-3 bg-surface-container-low rounded border border-outline-variant/5">
+<div class="text-[9px] text-on-surface-variant mb-1 uppercase">对冲滑点预估</div>
+<div class="text-sm font-bold font-headline tabular-nums">0.012%</div>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-6">
+<button class="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-extrabold text-sm rounded shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                        执行套利策略
+                    </button>
+<p class="text-[9px] text-center text-on-surface-variant mt-4 leading-relaxed px-4">
+                        此操作将自动在币安现货买入并在合约开出同等价值空单，请确保账户保证金充足。
+                    </p>
+</div>
+</div>
+</aside>
+<footer class="h-8 bg-surface-container-lowest flex items-center justify-between px-6 border-t border-outline-variant/5 z-40">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-[10px] text-on-surface-variant font-medium tracking-tighter uppercase">API Connectivity: Optimized</span>
+</div>
+<div class="flex items-center gap-2 border-l border-outline-variant/20 pl-6">
+<span class="text-[10px] text-on-surface-variant font-medium tracking-tighter uppercase">Latency: 24ms</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[10px] text-on-surface-variant font-headline tabular-nums">V2.4.1-STABLE</span>
+</div>
+</footer>
+</main>
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-surface-container-highest/90 border border-primary/20 px-6 py-3 rounded-full backdrop-blur-xl shadow-2xl flex items-center gap-4 z-50 md:hidden">
+<button class="text-primary material-symbols-outlined">dashboard</button>
+<button class="text-primary-fixed material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">search_check</button>
+<button class="text-primary material-symbols-outlined">monitoring</button>
+<button class="text-primary material-symbols-outlined">security</button>
+<button class="text-primary material-symbols-outlined">analytics</button>
+</div>
+</body></html>

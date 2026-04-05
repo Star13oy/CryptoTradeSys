@@ -1,20 +1,100 @@
 # Crypto Funding Arb
 
-## Phase 1 Vertical Slice
+## Status
 
-This phase delivers the first executable slice of the project:
+As of `2026-04-05`, this repository is no longer just a UI prototype. It now contains a usable phase-1 backend foundation plus a Stitch-aligned multi-page console shell.
 
-1. FastAPI health endpoint
-2. Public Binance market snapshot assembly
-3. Deterministic funding-opportunity scoring
-4. Read-only dashboard and scan APIs
-5. React console pages for `总览指挥台` and `机会扫描页`
+### Implemented so far
+
+1. Public Binance read path for spot, perp, funding, and console summaries.
+2. Explainable opportunity scoring with:
+   - `gross_edge_bps`
+   - `trading_cost_bps`
+   - `projected_net_edge_bps`
+   - `payback_periods`
+   - `expected_hold_periods`
+3. Strategy registry and default `funding-arb` strategy runtime.
+4. Risk policy layer with `allow / review / block` decisions.
+5. Deterministic backtest / replay engine.
+6. Offline adaptation workflow that recommends:
+   - `保守方案`
+   - `平衡方案`
+   - `进取方案`
+   - `系统自动推荐`
+7. Historical learning sample storage plus a trade-journal extractor for turning completed trades into reusable learning samples.
+8. Historical backtest dataset storage with import, listing, and `run-from-dataset` replay.
+9. Dataset-backed tuning-package evaluation so `保守 / 平衡 / 进取 / 自动推荐` can be replayed against stored windows before one-click apply.
+10. Shared trade ledger storage with import/list/filter support for `paper` and `live` records.
+11. Audit event storage with import/list/filter support for risk, execution, and recovery events.
+12. A first execution orchestrator that turns `open_hedge / close_hedge` intents into deterministic state transitions, ledger writes, and audit events.
+13. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
+14. Seven console pages aligned to the Stitch project:
+   - `总览指挥台`
+   - `机会扫描页`
+   - `持仓监控`
+   - `风控中心`
+   - `回测实验室`
+   - `模型工作台`
+   - `审计与日志中心`
+
+## Current Backend Surface
+
+### Read and algo APIs
+
+1. `/health`
+2. `/api/v1/dashboard/summary`
+3. `/api/v1/scan/opportunities`
+4. `/api/v1/algo/risk/evaluate`
+5. `/api/v1/algo/backtest/run`
+6. `/api/v1/algo/backtest/datasets`
+7. `/api/v1/algo/backtest/datasets/import`
+8. `/api/v1/algo/backtest/run-from-dataset`
+9. `/api/v1/algo/adaptation/state`
+10. `/api/v1/algo/adaptation/recommend`
+11. `/api/v1/algo/adaptation/evaluate-packages`
+12. `/api/v1/algo/adaptation/apply`
+13. `/api/v1/algo/adaptation/samples`
+14. `/api/v1/algo/adaptation/samples/import`
+15. `/api/v1/algo/adaptation/samples/extract-from-journal`
+16. `/api/v1/algo/journal/trades`
+17. `/api/v1/algo/journal/trades/import`
+18. `/api/v1/algo/ledger/trades`
+19. `/api/v1/algo/ledger/trades/import`
+20. `/api/v1/algo/audit/events`
+21. `/api/v1/algo/audit/events/import`
+22. `/api/v1/algo/execution/execute`
+
+### Runtime modules
+
+- `backend/app/console/`: console read service
+- `backend/app/opportunity/`: scoring engine
+- `backend/app/strategy/`: strategy abstraction and registry
+- `backend/app/risk/`: risk policy
+- `backend/app/backtest/`: replay / backtest engine
+- `backend/app/adaptation/`: offline learning and tuning recommendations
+- `backend/app/journal/`: completed-trade journal and extraction bridge
+- `backend/app/ledger/`: shared paper/live trade ledger
+- `backend/app/audit/`: event audit persistence and query surface
+- `backend/app/execution/`: execution intent orchestration and state transitions
 
 ## Project Structure
 
-- `backend/`: FastAPI service, exchange client, schemas, scoring logic, pytest suite
-- `frontend/`: Vite + React console, Stitch-aligned page shells, Vitest suite
-- `docs/superpowers/`: approved spec and implementation plans
+- `backend/`: FastAPI service, exchange client, schemas, algorithms, tests
+- `frontend/`: Vite + React console, Stitch-aligned pages, tests
+- `docs/superpowers/specs/`: design and requirements docs
+- `docs/superpowers/plans/`: implementation plans and progress updates
+
+## Verification Snapshot
+
+Latest verified status in this worktree:
+
+1. Full backend suite: `53 passed`
+2. Frontend was previously passing and buildable before the backend-focused slice:
+   - `vitest`: passed
+   - `vite build`: passed
+3. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
+4. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
+5. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
 
 ## Local Setup
 
@@ -23,9 +103,9 @@ This phase delivers the first executable slice of the project:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -e backend[dev]
-Set-Location backend
-..\.venv\Scripts\python -m pytest tests -q
-..\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
+$env:PYTHONPATH = "backend"
+.\.venv\Scripts\python -m pytest backend/tests -q
+.\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
 
 ### Frontend
@@ -34,9 +114,16 @@ Set-Location backend
 Set-Location frontend
 npm install
 npm run test
+npm run build
 npm run dev
 ```
 
-## Current Scope
+## What Is Still Missing
 
-This repository intentionally stops before live execution. Authenticated trading, risk guard, hedging loops, backtesting, and the model workbench are planned for later phases.
+This repository still stops short of a true production trading loop. The next major gaps are:
+
+1. Real authenticated Binance execution adapters behind the current orchestrator.
+2. Position ledger enrichment and hedge manager logic on top of the current shared trade ledger.
+3. Authenticated ingestion / sync for richer historical market + trade data instead of manual dataset import.
+4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls.
+5. Live guard daemons for circuit breakers, rebalance, and recovery.

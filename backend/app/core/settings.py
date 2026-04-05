@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     binance_perp_base_url: str = "https://fapi.binance.com"
     binance_spot_base_url: str = "https://api.binance.com"
     scan_limit: int = 25
+    tuning_state_path: str = "backend/runtime/tuning-state.json"
+    learning_sample_path: str = "backend/runtime/learning-samples.json"
+    trade_journal_path: str = "backend/runtime/trade-journal.json"
+    backtest_dataset_path: str = "backend/runtime/backtest-datasets.json"
+    trade_ledger_path: str = "backend/runtime/trade-ledger.json"
+    audit_event_path: str = "backend/runtime/audit-events.json"
 
 
 @lru_cache

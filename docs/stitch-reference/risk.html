@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-Hans"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OBSIDIAN LEDGER - 风控中心</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-highest": "#2e3446",
+                "background": "#0c1323",
+                "surface-container": "#191f30",
+                "primary-container": "#29a195",
+                "tertiary-container": "#ca8100",
+                "tertiary-fixed": "#ffddb8",
+                "inverse-surface": "#dce2f9",
+                "secondary-fixed": "#d8e3fb",
+                "inverse-on-surface": "#293041",
+                "outline": "#879391",
+                "secondary": "#bcc7de",
+                "on-primary-fixed": "#00201d",
+                "primary-fixed": "#89f5e7",
+                "on-primary-container": "#00302b",
+                "tertiary": "#ffb95f",
+                "primary-fixed-dim": "#6bd8cb",
+                "on-tertiary": "#472a00",
+                "on-tertiary-fixed-variant": "#653e00",
+                "on-secondary-fixed-variant": "#3c475a",
+                "inverse-primary": "#006a61",
+                "secondary-container": "#3e495d",
+                "outline-variant": "#3d4947",
+                "tertiary-fixed-dim": "#ffb95f",
+                "surface": "#0c1323",
+                "on-secondary": "#263143",
+                "surface-container-lowest": "#070e1e",
+                "surface-bright": "#32394b",
+                "on-error": "#690005",
+                "surface-container-low": "#141b2c",
+                "primary": "#6bd8cb",
+                "on-secondary-fixed": "#111c2d",
+                "on-background": "#dce2f9",
+                "surface-tint": "#6bd8cb",
+                "on-tertiary-container": "#3e2400",
+                "on-primary-fixed-variant": "#005049",
+                "surface-container-high": "#232a3b",
+                "on-surface-variant": "#bcc9c6",
+                "surface-dim": "#0c1323",
+                "secondary-fixed-dim": "#bcc7de",
+                "on-tertiary-fixed": "#2a1700",
+                "error": "#ffb4ab",
+                "on-primary": "#003732",
+                "on-secondary-container": "#aeb9d0",
+                "error-container": "#93000a",
+                "on-surface": "#dce2f9",
+                "on-error-container": "#ffdad6",
+                "surface-variant": "#2e3446"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "fontFamily": {
+                "headline": ["Space Grotesk"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #070e1e; }
+        ::-webkit-scrollbar-thumb { background: #3d4947; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30">
+<!-- TopNavBar -->
+<nav class="bg-[#0c1323] text-[#6bd8cb] font-['Space_Grotesk'] text-sm tracking-tight tabular-nums bg-[#232a3b]/30 backdrop-blur-md border-b border-[#3d4947]/15 flex justify-between items-center w-full px-6 sticky top-0 z-50 h-14">
+<div class="text-lg font-bold tracking-widest text-[#6bd8cb] bg-gradient-to-r from-[#6bd8cb] to-[#29a195] bg-clip-text text-transparent">
+            OBSIDIAN LEDGER
+        </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors" href="#">实盘模式</a>
+<a class="text-[#6bd8cb] border-b-2 border-[#6bd8cb] pb-1" href="#">连接成功</a>
+<a class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors" href="#">系统时间 14:32:05</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined p-2 hover:bg-[#232a3b] transition-all duration-200 rounded-lg">notifications</button>
+<button class="material-symbols-outlined p-2 hover:bg-[#232a3b] transition-all duration-200 rounded-lg">settings</button>
+<div class="w-8 h-8 rounded-lg overflow-hidden border border-[#3d4947]/30">
+<img alt="用户头像" data-alt="Cyberpunk style male trader avatar with neon accents and futuristic headset on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3U3jWhDqbvNASmEO4ZIu6U_iuKzoIh35HWjuVKdxu0c2m4pRybFtDvNfVfV30dgALA_vfNZY1pPSg0PEg4owSc_Lstmybaq8kF7Qr5bjms4YBGCgsdluETNN9sRkqZcZnarK4GLub0sY0WxxODyLWSEladey23Vsfgh-x4oliNm8vCPKG9AC_BJaBm7saXNU20HY7fwZMTcQdKrj28W4-vNg7MVoZUqminy2sZPs-b3kiYBjxYsqFwSuLrTRD38AiSve_b3jg_OsS"/>
+</div>
+</div>
+</nav>
+<div class="flex">
+<!-- SideNavBar -->
+<aside class="bg-[#070e1e] fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 flex flex-col border-r border-[#3d4947]/10 shadow-[4px_0_24px_rgba(11,18,34,0.5)] z-40">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container/20 rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">terminal</span>
+</div>
+<div>
+<div class="text-[#6bd8cb] font-bold font-headline">QUANT_ADMIN</div>
+<div class="text-[10px] text-on-surface-variant uppercase tracking-wider">高级交易员</div>
+</div>
+</div>
+<nav class="flex-1 px-2 space-y-1 overflow-y-auto">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Inter'] text-xs font-medium">总览面板</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined">search_check</span>
+<span class="font-['Inter'] text-xs font-medium">扫描器</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-['Inter'] text-xs font-medium">监控中心</span>
+</a>
+<a class="bg-gradient-to-r from-[#6bd8cb]/10 to-transparent text-[#6bd8cb] border-l-4 border-[#6bd8cb] flex items-center gap-3 px-4 py-3 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-['Inter'] text-xs font-medium">风险管理</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined">history_toggle_off</span>
+<span class="font-['Inter'] text-xs font-medium">策略回测</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['Inter'] text-xs font-medium">分析工作台</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-['Inter'] text-xs font-medium">审计日志</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant/15">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-2 mb-4">
+<span class="material-symbols-outlined text-sm">add</span>
+                    新策略
+                </button>
+<div class="space-y-1">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:bg-[#232a3b]/50 rounded-lg" href="#">
+<span class="material-symbols-outlined text-sm">settings</span>
+<span class="font-['Inter'] text-[11px]">系统设置</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-2 hover:bg-[#232a3b]/50 rounded-lg" href="#">
+<span class="material-symbols-outlined text-sm">logout</span>
+<span class="font-['Inter'] text-[11px]">退出登录</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 min-h-screen p-8 bg-surface">
+<!-- Header Section -->
+<header class="mb-8 flex justify-between items-end">
+<div>
+<h1 class="font-headline text-3xl font-bold text-on-surface tracking-tight">风控中心 <span class="text-primary/50 text-xl ml-2">RISK_CENTER_v4.2</span></h1>
+<p class="text-on-surface-variant text-sm mt-1">系统级风险监控与实时干预工作台</p>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2 bg-error-container text-on-error-container font-bold rounded-lg text-xs flex items-center gap-2 border border-error/20">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">lock</span>
+                        全账户冻结
+                    </button>
+<button class="px-6 py-2 bg-surface-container-high text-on-surface border border-outline-variant/30 font-bold rounded-lg text-xs flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">stop_circle</span>
+                        停止新开仓
+                    </button>
+</div>
+</header>
+<div class="grid grid-cols-12 gap-6">
+<!-- Risk Overview Bento Section -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="bg-surface-container-low p-6 rounded-lg relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl">shield</span>
+</div>
+<div class="relative z-10">
+<h3 class="text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-4">当前风险等级</h3>
+<div class="flex items-center gap-4">
+<div class="w-4 h-12 bg-primary rounded-full"></div>
+<div>
+<div class="text-4xl font-headline font-extrabold text-primary tabular-nums">NORMAL</div>
+<div class="text-xs text-on-surface-variant mt-1">风险评分: 12 / 100</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-lg">
+<h3 class="text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-4">24h 异常情况统计</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest p-4 rounded border-l-2 border-tertiary">
+<div class="text-2xl font-headline font-bold text-tertiary tabular-nums">04</div>
+<div class="text-[10px] text-on-surface-variant">阈值告警</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded border-l-2 border-error">
+<div class="text-2xl font-headline font-bold text-error tabular-nums">00</div>
+<div class="text-[10px] text-on-surface-variant">系统性异常</div>
+</div>
+</div>
+</div>
+<!-- Entity Control -->
+<div class="bg-surface-container-low p-6 rounded-lg">
+<h3 class="text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-4">实体访问控制</h3>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-[11px] mb-2">
+<span class="text-primary">白名单 (White-List)</span>
+<span class="text-on-surface-variant">142 地址</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[11px] mb-2">
+<span class="text-error">黑名单 (Black-List)</span>
+<span class="text-on-surface-variant">1,204 地址</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-error w-1/4"></div>
+</div>
+</div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 py-2 bg-surface-container-high text-[11px] font-bold rounded border border-outline-variant/20">编辑名单</button>
+<button class="flex-1 py-2 bg-surface-container-high text-[11px] font-bold rounded border border-outline-variant/20">同步规则</button>
+</div>
+</div>
+</div>
+<!-- Threshold Config Section -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-lg p-8 relative">
+<div class="flex justify-between items-center mb-8">
+<h3 class="text-on-surface font-headline font-bold">风险阈值动态配置</h3>
+<span class="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded">实时生效</span>
+</div>
+<div class="grid grid-cols-2 gap-x-12 gap-y-10">
+<div class="space-y-3">
+<label class="text-xs text-on-surface-variant flex justify-between">
+<span>总风险预算 (USD)</span>
+<span class="font-headline text-primary">$1,200,000</span>
+</label>
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+<div class="flex justify-between text-[9px] text-outline">
+<span>$0</span>
+<span>$5,000,000</span>
+</div>
+</div>
+<div class="space-y-3">
+<label class="text-xs text-on-surface-variant flex justify-between">
+<span>单标的上限 (BTC/USDT)</span>
+<span class="font-headline text-primary">2.5%</span>
+</label>
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+<div class="flex justify-between text-[9px] text-outline">
+<span>0.1%</span>
+<span>10.0%</span>
+</div>
+</div>
+<div class="space-y-3">
+<label class="text-xs text-on-surface-variant flex justify-between">
+<span>最低保证金率阈值</span>
+<span class="font-headline text-tertiary">15.0%</span>
+</label>
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-tertiary" type="range"/>
+<div class="flex justify-between text-[9px] text-outline">
+<span>5%</span>
+<span>50%</span>
+</div>
+</div>
+<div class="space-y-3">
+<label class="text-xs text-on-surface-variant flex justify-between">
+<span>执行延迟阈值 (ms)</span>
+<span class="font-headline text-error">120ms</span>
+</label>
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-error" type="range"/>
+<div class="flex justify-between text-[9px] text-outline">
+<span>10ms</span>
+<span>1000ms</span>
+</div>
+</div>
+</div>
+<!-- Live Rules & Alerts -->
+<div class="mt-12">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-on-surface font-headline text-sm font-bold">实时风险规则与告警</h3>
+<button class="text-xs text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">add_circle</span>
+                                添加规则
+                            </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-xs">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant border-b border-outline-variant/10">
+<th class="py-3 px-2 font-medium">状态</th>
+<th class="py-3 px-2 font-medium">规则名称</th>
+<th class="py-3 px-2 font-medium">触发条件</th>
+<th class="py-3 px-2 font-medium">响应动作</th>
+<th class="py-3 px-2 font-medium">触发次数</th>
+<th class="py-3 px-2 font-medium">最后活动</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-4 px-2"><div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(107,216,203,0.6)]"></div></td>
+<td class="py-4 px-2 font-medium text-on-surface">异常滑点保护</td>
+<td class="py-4 px-2 text-on-surface-variant">Slippage &gt; 0.5%</td>
+<td class="py-4 px-2"><span class="px-2 py-0.5 bg-secondary-container text-secondary text-[10px] rounded">CANCEL_ORDER</span></td>
+<td class="py-4 px-2 tabular-nums">12</td>
+<td class="py-4 px-2 tabular-nums text-on-surface-variant">20:42:11</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-4 px-2"><div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(107,216,203,0.6)]"></div></td>
+<td class="py-4 px-2 font-medium text-on-surface">单日亏损熔断</td>
+<td class="py-4 px-2 text-on-surface-variant">Daily_PnL &lt; -2%</td>
+<td class="py-4 px-2"><span class="px-2 py-0.5 bg-error-container text-on-error-container text-[10px] rounded">KILL_SWITCH</span></td>
+<td class="py-4 px-2 tabular-nums">0</td>
+<td class="py-4 px-2 tabular-nums text-on-surface-variant">--</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-4 px-2"><div class="w-2 h-2 rounded-full bg-tertiary"></div></td>
+<td class="py-4 px-2 font-medium text-on-surface">API 速率限制告警</td>
+<td class="py-4 px-2 text-on-surface-variant">Rate &gt; 80% Cap</td>
+<td class="py-4 px-2"><span class="px-2 py-0.5 bg-tertiary-container text-on-tertiary-container text-[10px] rounded">ALERT_ONLY</span></td>
+<td class="py-4 px-2 tabular-nums">154</td>
+<td class="py-4 px-2 tabular-nums text-on-surface-variant">21:15:04</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors">
+<td class="py-4 px-2"><div class="w-2 h-2 rounded-full bg-outline"></div></td>
+<td class="py-4 px-2 font-medium text-on-surface">延迟敏感性过滤</td>
+<td class="py-4 px-2 text-on-surface-variant">Lat &gt; 100ms</td>
+<td class="py-4 px-2"><span class="px-2 py-0.5 bg-surface-container-highest text-on-surface-variant text-[10px] rounded">RE_ROUTE</span></td>
+<td class="py-4 px-2 tabular-nums">42</td>
+<td class="py-4 px-2 tabular-nums text-on-surface-variant">12:00:59</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Risk Activity Log & Map Visual -->
+<div class="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="col-span-1 bg-surface-container-low p-6 rounded-lg">
+<h3 class="text-on-surface font-headline text-sm font-bold mb-4">实时拦截流</h3>
+<div class="space-y-4 max-h-48 overflow-y-auto pr-2">
+<div class="flex gap-3 items-start border-l border-error pl-3 py-1">
+<div class="text-[10px] tabular-nums text-on-surface-variant pt-1">21:44</div>
+<div>
+<div class="text-[11px] font-bold text-on-surface">非法IP请求拦截</div>
+<div class="text-[10px] text-error">Source: 184.22.x.x -&gt; Dropped</div>
+</div>
+</div>
+<div class="flex gap-3 items-start border-l border-tertiary pl-3 py-1">
+<div class="text-[10px] tabular-nums text-on-surface-variant pt-1">21:42</div>
+<div>
+<div class="text-[11px] font-bold text-on-surface">大额单笔预警</div>
+<div class="text-[10px] text-tertiary">Asset: BTC/USDT -&gt; $450k Limit</div>
+</div>
+</div>
+<div class="flex gap-3 items-start border-l border-primary pl-3 py-1">
+<div class="text-[10px] tabular-nums text-on-surface-variant pt-1">21:38</div>
+<div>
+<div class="text-[11px] font-bold text-on-surface">白名单访问</div>
+<div class="text-[10px] text-primary">Admin console access granted</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-2 bg-surface-container-low rounded-lg relative h-64 overflow-hidden">
+<img alt="网络流量地图" class="absolute inset-0 w-full h-full object-cover opacity-20 grayscale mix-blend-overlay" data-alt="Digital world map with glowing cyan network connections and data nodes on a dark tech background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCngBEUXIR2SKMIE_SnvidEL5t2ldjQzn0o7ej2SrJPqf6TNRr2jHmdI6BzUDKcvkODEFXmRmgeILdWGwRg4FctNnPnc4sjUALTWszAdvHxdjVO6znEAquSO8XVaGSo09hBtIkIrS0nSBNUdCy8rVjgXO1n7xuM7rO9w1AfLbfvJiTQyWDwU88JAsfI9pdasyvGmCqyfBmHg8FKANdQXCI0GPPs4FudO82hV1NDfx8PD-JwovgqQvTFapRAAKgwg22ZXi3Xg8ncS459"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+<div class="relative p-6">
+<h3 class="text-on-surface font-headline text-sm font-bold mb-1">全球节点延迟监控</h3>
+<p class="text-[10px] text-on-surface-variant mb-4">当前均值: 42ms (集群 A, B, C)</p>
+<div class="flex items-end gap-1 h-32">
+<div class="flex-1 bg-primary/40 h-[60%]"></div>
+<div class="flex-1 bg-primary/40 h-[80%]"></div>
+<div class="flex-1 bg-primary/40 h-[70%]"></div>
+<div class="flex-1 bg-primary/60 h-[90%]"></div>
+<div class="flex-1 bg-primary h-[100%]"></div>
+<div class="flex-1 bg-primary/40 h-[65%]"></div>
+<div class="flex-1 bg-error/40 h-[40%]"></div>
+<div class="flex-1 bg-primary/40 h-[75%]"></div>
+<div class="flex-1 bg-primary/40 h-[85%]"></div>
+<div class="flex-1 bg-primary/40 h-[95%]"></div>
+<div class="flex-1 bg-tertiary/40 h-[50%]"></div>
+<div class="flex-1 bg-primary/40 h-[80%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Status Bar (Fixed Bottom) -->
+<footer class="fixed bottom-0 left-0 right-0 h-8 bg-surface-container-lowest border-t border-outline-variant/10 z-50 flex items-center px-4 justify-between text-[10px] text-on-surface-variant">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span>引擎状态: 运行中</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[12px]">database</span>
+<span>主库连接: 4ms</span>
+</div>
+</div>
+<div class="flex items-center gap-4 font-headline tracking-widest">
+<span class="text-primary">SECURE CHANNEL ALPHA</span>
+<span class="text-outline-variant">|</span>
+<span>SHANGHAI_NODE_04</span>
+</div>
+</footer>
+</body></html>

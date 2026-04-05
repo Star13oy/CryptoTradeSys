@@ -1,17 +1,22 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
 
-from app.market_data.service import build_market_snapshot
-from app.opportunity.scorer import score_snapshot
+from app.console.read_service import ConsoleReadService, get_console_read_service
+from app.schemas.console import ScanFilters, ScanOpportunitiesResponse
 
 
 router = APIRouter(prefix="/api/v1/scan", tags=["scan"])
 
 
-@router.get("/opportunities")
-async def get_scan() -> dict:
-    snapshots = build_market_snapshot(
-        [{"symbol": "BTCUSDT", "fundingRate": "0.0002"}],
-        [{"symbol": "BTCUSDT", "bidPrice": "60000", "askPrice": "60001"}],
-        [{"symbol": "BTCUSDT", "bidPrice": "59995", "askPrice": "59996"}],
+@router.get("/opportunities", response_model=ScanOpportunitiesResponse)
+async def get_scan(
+    limit: int = Query(default=25, ge=1, le=100),
+    positive_funding_only: bool = Query(default=True),
+    min_net_edge_bps: float | None = Query(default=None, ge=0),
+    read_service: ConsoleReadService = Depends(get_console_read_service),
+) -> ScanOpportunitiesResponse:
+    filters = ScanFilters(
+        limit=limit,
+        positive_funding_only=positive_funding_only,
+        min_net_edge_bps=min_net_edge_bps,
     )
-    return {"rows": [score_snapshot(snapshot).model_dump() for snapshot in snapshots]}
+    return await read_service.get_scan_opportunities(filters)

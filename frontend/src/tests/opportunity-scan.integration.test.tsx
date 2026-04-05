@@ -1,17 +1,16 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 
 import { OpportunityScanPage } from "../pages/opportunity-scan/page";
+import { renderWithProviders } from "./render-with-providers";
 
-test("scan page renders fetched rows", async () => {
+test("scan page renders an explicit error state when the request fails", async () => {
   (globalThis as { fetch: typeof fetch }).fetch = (async () =>
     ({
-      ok: true,
-      json: async () => ({
-        rows: [{ symbol: "ADAUSDT", score: 7, risk_tag: "normal", net_edge_bps: 0.72 }],
-      }),
+      ok: false,
+      status: 503,
     }) as Response) as typeof fetch;
 
-  render(<OpportunityScanPage />);
+  renderWithProviders(<OpportunityScanPage />);
 
-  await waitFor(() => expect(screen.getByText("ADAUSDT")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("扫描服务暂时不可用")).toBeTruthy());
 });

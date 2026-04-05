@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#2e3446",
+                        "background": "#0c1323",
+                        "surface-container": "#191f30",
+                        "primary-container": "#29a195",
+                        "tertiary-container": "#ca8100",
+                        "tertiary-fixed": "#ffddb8",
+                        "inverse-surface": "#dce2f9",
+                        "secondary-fixed": "#d8e3fb",
+                        "inverse-on-surface": "#293041",
+                        "outline": "#879391",
+                        "secondary": "#bcc7de",
+                        "on-primary-fixed": "#00201d",
+                        "primary-fixed": "#89f5e7",
+                        "on-primary-container": "#00302b",
+                        "tertiary": "#ffb95f",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-tertiary": "#472a00",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "inverse-primary": "#006a61",
+                        "secondary-container": "#3e495d",
+                        "outline-variant": "#3d4947",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "surface": "#0c1323",
+                        "on-secondary": "#263143",
+                        "surface-container-lowest": "#070e1e",
+                        "surface-bright": "#32394b",
+                        "on-error": "#690005",
+                        "surface-container-low": "#141b2c",
+                        "primary": "#6bd8cb",
+                        "on-secondary-fixed": "#111c2d",
+                        "on-background": "#dce2f9",
+                        "surface-tint": "#6bd8cb",
+                        "on-tertiary-container": "#3e2400",
+                        "on-primary-fixed-variant": "#005049",
+                        "surface-container-high": "#232a3b",
+                        "on-surface-variant": "#bcc9c6",
+                        "surface-dim": "#0c1323",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-tertiary-fixed": "#2a1700",
+                        "error": "#ffb4ab",
+                        "on-primary": "#003732",
+                        "on-secondary-container": "#aeb9d0",
+                        "error-container": "#93000a",
+                        "on-surface": "#dce2f9",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#2e3446"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0c1323; color: #dce2f9; }
+        .headline { font-family: 'Space Grotesk', sans-serif; }
+        .tabular { font-variant-numeric: tabular-nums; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { background: rgba(35, 42, 59, 0.8); backdrop-filter: blur(20px); }
+    </style>
+</head>
+<body class="flex min-h-screen overflow-hidden">
+<!-- SideNavBar (Authority: Shared Components JSON) -->
+<aside class="fixed left-0 top-0 h-full w-64 flex flex-col bg-[#070e1e] border-r border-[#3d4947]/10 shadow-[4px_0_24px_rgba(11,18,34,0.5)] z-40">
+<div class="h-screen flex flex-col py-6 space-y-2">
+<div class="px-6 mb-8">
+<div class="text-[#6bd8cb] font-bold text-xl tracking-tighter headline">QUANT_ADMIN</div>
+<div class="text-[#bcc9c6] text-[10px] uppercase tracking-widest mt-1">高级交易员</div>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-xs font-medium">总览面板</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="search_check">search_check</span>
+<span class="font-['Inter'] text-xs font-medium">扫描器</span>
+</a>
+<a class="bg-gradient-to-r from-[#6bd8cb]/10 to-transparent text-[#6bd8cb] border-l-4 border-[#6bd8cb] flex items-center gap-3 px-4 py-3 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="monitoring">monitoring</span>
+<span class="font-['Inter'] text-xs font-medium">监测中心</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-['Inter'] text-xs font-medium">风险管理</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="history_toggle_off">history_toggle_off</span>
+<span class="font-['Inter'] text-xs font-medium">策略回测</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-['Inter'] text-xs font-medium">分析工作台</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="font-['Inter'] text-xs font-medium">审计日志</span>
+</a>
+</nav>
+<div class="px-4 py-4 mt-auto">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary-container py-2 rounded-lg text-xs font-bold transition-transform active:scale-95">
+                    新策略
+                </button>
+</div>
+<div class="px-2 pt-4 border-t border-[#3d4947]/10">
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] text-xs font-medium">系统设置</span>
+</a>
+<a class="text-[#bcc9c6] flex items-center gap-3 px-4 py-3 hover:bg-[#232a3b]/50 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-['Inter'] text-xs font-medium">退出登录</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar (Authority: Shared Components JSON) -->
+<header class="flex justify-between items-center w-full px-6 sticky top-0 z-50 bg-[#0c1323] h-14 bg-[#232a3b]/30 backdrop-blur-md border-b border-[#3d4947]/15">
+<div class="text-lg font-bold tracking-widest text-[#6bd8cb] bg-gradient-to-r from-[#6bd8cb] to-[#29a195] bg-clip-text text-transparent headline">OBSIDIAN LEDGER</div>
+<div class="flex items-center gap-8">
+<div class="flex gap-6 font-['Space_Grotesk'] text-sm tracking-tight tabular-nums">
+<span class="text-[#bcc9c6] hover:text-[#dce2f9] transition-colors cursor-pointer">实盘模式</span>
+<div class="flex items-center gap-2 text-[#6bd8cb] border-b-2 border-[#6bd8cb] pb-1">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                        连接成功
+                    </div>
+<span class="text-[#bcc9c6]">14:22:45 UTC</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all duration-200" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all duration-200" data-icon="settings">settings</button>
+<div class="w-8 h-8 rounded-lg overflow-hidden border border-outline-variant/30">
+<img alt="用户头像" class="w-full h-full object-cover" data-alt="professional trader headshot with neutral background high contrast lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoKjrDC3JRCh3xIV3vL8mV1QHBvmzUfI--DleN1m33xneoEE93uJoQkNhFNnNjWLdzSiNWHm0oGh_Qr6wcNMZwI4cN1lj1CfQoVw-2o4GTzhuAQbOGuQOGWXgI2lAfiOgQeKw8b6lnuko8VTg9DCpdthkAWNUDONcDKBR6KHswxmYGl2PXpiJA7E-AsW30rdO3zdh6zKJxG-Li-O3Z_JDzL6wTQETEt-jp_OTjVFCDnLip4JuZi8AtS8hx-tFXLeIG3DqdhYX3ViJX"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Scrollable Dashboard Area -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- Statistics Row: Bento Style -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-surface-container-low p-5 rounded-lg border border-outline-variant/10 flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-wider">当前持仓数</span>
+<span class="material-symbols-outlined text-primary text-lg" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div class="mt-4">
+<span class="text-3xl font-bold headline text-on-surface tabular">12</span>
+<span class="text-xs text-primary ml-2">+2 从昨日</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-5 rounded-lg border border-outline-variant/10 flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-wider">总名义仓位</span>
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="layers">layers</span>
+</div>
+<div class="mt-4">
+<span class="text-3xl font-bold headline text-on-surface tabular">$1,428,902.50</span>
+<span class="text-xs text-on-surface-variant ml-2 tracking-tight">USDT 结算</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-5 rounded-lg border border-outline-variant/10 flex flex-col justify-between overflow-hidden relative">
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-wider">未实现收益 (uPnL)</span>
+<span class="material-symbols-outlined text-primary text-lg" data-icon="trending_up">trending_up</span>
+</div>
+<div class="mt-4">
+<span class="text-3xl font-bold headline text-primary tabular">+$14,204.12</span>
+<span class="text-xs text-primary ml-2">+3.14%</span>
+</div>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-primary/20">
+<div class="h-full bg-primary" style="width: 65%"></div>
+</div>
+</div>
+</div>
+<!-- Main Layout: Table + Detail Panel -->
+<div class="grid grid-cols-12 gap-6 items-start">
+<!-- Active Hedges Table -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-lg overflow-hidden border border-outline-variant/10">
+<div class="px-6 py-4 flex justify-between items-center border-b border-outline-variant/10">
+<h2 class="text-sm font-bold headline text-primary uppercase tracking-widest">活跃对冲仓位 (Active Hedges)</h2>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface-container-highest text-[10px] rounded text-on-surface-variant">全部</span>
+<span class="px-2 py-1 hover:bg-surface-container-highest text-[10px] rounded text-on-surface-variant cursor-pointer transition-colors">高偏离</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-xs">
+<thead class="bg-surface-container-low text-on-surface-variant uppercase tracking-tighter">
+<tr>
+<th class="px-6 py-4 font-semibold">交易对</th>
+<th class="px-6 py-4 font-semibold">对冲偏离</th>
+<th class="px-6 py-4 font-semibold text-center">杠杆</th>
+<th class="px-6 py-4 font-semibold">资金费率状态</th>
+<th class="px-6 py-4 font-semibold">止盈 / 止损</th>
+<th class="px-6 py-4 font-semibold text-right">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-container-highest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-sm">BTC/USDT</span>
+<span class="text-[10px] text-on-surface-variant">永续合约 / Binance</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 82%"></div>
+</div>
+<span class="tabular font-medium">0.82%</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="bg-secondary-container/30 text-secondary px-2 py-0.5 rounded text-[10px] font-bold">10.0x</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-xs" data-icon="keyboard_double_arrow_up">keyboard_double_arrow_up</span>
+<span class="tabular">0.0100%</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col gap-0.5 tabular">
+<span class="text-primary">68,240.50</span>
+<span class="text-error">62,100.00</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="more_vert">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors group bg-surface-container/30">
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-sm">ETH/USDT</span>
+<span class="text-[10px] text-on-surface-variant">永续合约 / OKX</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary" style="width: 45%"></div>
+</div>
+<span class="tabular font-medium text-tertiary">1.45%</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="bg-secondary-container/30 text-secondary px-2 py-0.5 rounded text-[10px] font-bold">5.0x</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-error">
+<span class="material-symbols-outlined text-xs" data-icon="keyboard_double_arrow_down">keyboard_double_arrow_down</span>
+<span class="tabular">-0.0024%</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col gap-0.5 tabular">
+<span class="text-primary">2,640.00</span>
+<span class="text-error">2,320.50</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="more_vert">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-sm">SOL/USDT</span>
+<span class="text-[10px] text-on-surface-variant">永续合约 / Binance</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 12%"></div>
+</div>
+<span class="tabular font-medium">0.12%</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="bg-secondary-container/30 text-secondary px-2 py-0.5 rounded text-[10px] font-bold">20.0x</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-xs" data-icon="horizontal_rule">horizontal_rule</span>
+<span class="tabular">0.0000%</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col gap-0.5 tabular">
+<span class="text-primary">158.20</span>
+<span class="text-error">132.00</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="more_vert">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Detail Panel (Right Sidebar) -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Exit Conditions Panel -->
+<div class="bg-surface-container p-6 rounded-lg border border-outline-variant/15 glass-panel">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="rule_folder">rule_folder</span>
+<h3 class="text-sm font-bold headline text-on-surface uppercase tracking-wider">退出条件详情</h3>
+</div>
+<div class="space-y-4">
+<div class="p-3 bg-surface-container-lowest rounded border-l-2 border-primary">
+<div class="flex justify-between text-[10px] text-on-surface-variant mb-1">
+<span>目标基差偏离</span>
+<span class="text-primary">触发中</span>
+</div>
+<div class="text-xs font-medium">当现货/永续基差收敛至 <span class="text-primary font-bold tabular">0.05%</span></div>
+</div>
+<div class="p-3 bg-surface-container-lowest rounded border-l-2 border-outline-variant">
+<div class="flex justify-between text-[10px] text-on-surface-variant mb-1">
+<span>预估资金流向</span>
+<span>等待</span>
+</div>
+<div class="text-xs font-medium">累计资金费率收益达到 <span class="text-on-surface font-bold tabular">1.2%</span></div>
+</div>
+<div class="p-3 bg-surface-container-lowest rounded border-l-2 border-error">
+<div class="flex justify-between text-[10px] text-error mb-1 uppercase tracking-tighter">
+<span>强制平仓警报</span>
+<span>关键</span>
+</div>
+<div class="text-xs font-medium">账户净值跌破预警线 <span class="text-error font-bold tabular">$1,250,000</span></div>
+</div>
+</div>
+<!-- Manual Intervention Buttons -->
+<div class="mt-8 pt-6 border-t border-outline-variant/10 space-y-3">
+<h4 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em] mb-4">手动干预</h4>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 py-2.5 rounded bg-surface-container-highest text-on-surface text-xs font-medium hover:bg-outline-variant/20 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="remove_circle_outline">remove_circle_outline</span>
+                                    仅减仓
+                                </button>
+<button class="flex items-center justify-center gap-2 py-2.5 rounded bg-surface-container-highest text-on-surface text-xs font-medium hover:bg-outline-variant/20 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="pause_circle">pause_circle</span>
+                                    暂停
+                                </button>
+</div>
+<button class="w-full flex items-center justify-center gap-2 py-3 rounded bg-error-container text-on-error-container text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="bolt" data-weight="fill" style="font-variation-settings: 'FILL' 1;">bolt</span>
+                                立即强平 (Panic Sell)
+                            </button>
+</div>
+</div>
+<!-- Risk Heatmap (Decorative Context) -->
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/10">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">实时风险热图</span>
+<span class="text-[10px] text-primary tabular">LIVE</span>
+</div>
+<div class="h-24 flex gap-1 items-end">
+<div class="flex-1 bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/40 h-3/4 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/30 h-2/3 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/60 h-full rounded-t-sm"></div>
+<div class="flex-1 bg-primary/20 h-1/3 rounded-t-sm"></div>
+<div class="flex-1 bg-tertiary/50 h-5/6 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/40 h-2/3 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/50 h-3/4 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/30 h-1/2 rounded-t-sm"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer / Status Bar -->
+<footer class="h-10 bg-surface-container-lowest flex items-center px-6 justify-between border-t border-outline-variant/10 text-[10px] text-on-surface-variant tabular font-medium">
+<div class="flex gap-6">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                    核心引擎: 运行中
+                </div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                    API 延迟: 12ms
+                </div>
+</div>
+<div class="flex gap-4">
+<span>序列号: OBJ-2940-X1</span>
+<span>加密等级: AES-256</span>
+<span class="text-on-surface">© 2024 OBSIDIAN LEDGER</span>
+</div>
+</footer>
+</main>
+</body></html>

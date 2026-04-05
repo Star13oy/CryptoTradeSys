@@ -1,22 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.market_data.service import build_market_snapshot
-from app.opportunity.scorer import score_snapshot
+from app.console.read_service import ConsoleReadService, get_console_read_service
+from app.schemas.console import DashboardSummary
 
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
 
-@router.get("/summary")
-async def get_dashboard_summary() -> dict:
-    snapshots = build_market_snapshot(
-        [{"symbol": "BTCUSDT", "fundingRate": "0.0002"}],
-        [{"symbol": "BTCUSDT", "bidPrice": "60000", "askPrice": "60001"}],
-        [{"symbol": "BTCUSDT", "bidPrice": "59995", "askPrice": "59996"}],
-    )
-    scores = [score_snapshot(snapshot).model_dump() for snapshot in snapshots]
-    return {
-        "account_health": {"mode": "paper", "exchange": "binance", "risk_state": "normal"},
-        "top_opportunities": scores,
-        "paper_positions": [],
-    }
+@router.get("/summary", response_model=DashboardSummary)
+async def get_dashboard_summary(
+    read_service: ConsoleReadService = Depends(get_console_read_service),
+) -> DashboardSummary:
+    return await read_service.get_dashboard_summary()

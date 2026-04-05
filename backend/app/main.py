@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 
+from app.api.routes.algo import router as algo_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.scan import router as scan_router
 
 
 app = FastAPI(title="Crypto Funding Arb")
+app.include_router(algo_router)
 app.include_router(dashboard_router)
 app.include_router(scan_router)
 

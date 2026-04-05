@@ -13,17 +13,27 @@ def build_market_snapshot(funding_rows: list[dict], perp_rows: list[dict], spot_
 
         perp = perp_map[symbol]
         spot = spot_map[symbol]
-        perp_mid = (float(perp["bidPrice"]) + float(perp["askPrice"])) / 2
-        spot_mid = (float(spot["bidPrice"]) + float(spot["askPrice"])) / 2
+        funding_rate = funding.get("fundingRate", funding.get("lastFundingRate"))
+        if funding_rate is None:
+            continue
+        perp_bid = float(perp["bidPrice"])
+        perp_ask = float(perp["askPrice"])
+        spot_bid = float(spot["bidPrice"])
+        spot_ask = float(spot["askPrice"])
+        if min(perp_bid, perp_ask, spot_bid, spot_ask) <= 0:
+            continue
+
+        perp_mid = (perp_bid + perp_ask) / 2
+        spot_mid = (spot_bid + spot_ask) / 2
 
         snapshots.append(
             MarketSnapshot(
                 symbol=symbol,
-                funding_rate=float(funding["fundingRate"]),
+                funding_rate=float(funding_rate),
                 perp_mid=perp_mid,
                 spot_mid=spot_mid,
-                perp_spread_bps=((float(perp["askPrice"]) - float(perp["bidPrice"])) / perp_mid) * 10000,
-                spot_spread_bps=((float(spot["askPrice"]) - float(spot["bidPrice"])) / spot_mid) * 10000,
+                perp_spread_bps=((perp_ask - perp_bid) / perp_mid) * 10000,
+                spot_spread_bps=((spot_ask - spot_bid) / spot_mid) * 10000,
             )
         )
 
