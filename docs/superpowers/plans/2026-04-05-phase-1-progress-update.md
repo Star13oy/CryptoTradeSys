@@ -30,6 +30,7 @@
 15. 已补上 attention queue 级别的 reconciliation 批量 sync，可按优先级拉取最需要关注的一批 live trade 订单状态。
 16. 已补上轻量级 in-process reconciliation worker，可按固定间隔自动同步 attention queue，并暴露 worker status / manual run API。
 17. 总览页与扫描页已补上原始行情细节层，可直接看到 `spot/perp bid-ask`、`mid`、`basis` 与双腿点差成本。
+18. 已补上 recovery planning 层，可把 `failed / recovery_pending` 交易转成 `resume_open / resume_close / manual_review` 计划，并只对安全可恢复的子集做批量自动恢复。
 
 ## What Is Implemented
 
@@ -116,6 +117,7 @@
 21. 已支持 `/api/v1/algo/reconciliation/sync?limit=N`，可对当前 attention candidates 做受控批量同步。
 22. 风控中心页面已接上 `/api/v1/algo/reconciliation/candidates`，能直接展示待对账候选、缺失订单与建议动作。
 23. 已支持 `/api/v1/algo/reconciliation/worker` 与 `/api/v1/algo/reconciliation/worker/run`，便于查看后台同步状态并做受控手动触发。
+24. 已支持 `/api/v1/algo/recovery/plans` 与 `/api/v1/algo/recovery/execute-auto`，为后续 recovery worker / operator workflow 提供恢复计划与受控自动执行入口。
 
 ## Real Progress Against The Original Design
 
@@ -133,6 +135,7 @@
 10. `Portfolio Hedge Manager` 的第一版再平衡建议接口
 11. `Execution Reconciliation` 的第一版回报导入与差异识别接口
 12. 可选 MySQL 持久化底座
+13. `Recovery Planning` 的第一版计划与自动执行接口
 
 ### 仍然是主要缺口的模块
 
@@ -142,15 +145,16 @@
 4. 更完整的历史数据仓库与自动采集
 5. live risk / rebalance / recovery 进程
 6. 自适应建议包的前端工作台联调
-7. 将当前 in-process reconciliation worker 进一步提升成更生产化的守护/监督模型，补上多进程安全、告警与持久化状态
+7. 将当前 in-process reconciliation worker 与 recovery planner 进一步提升成更生产化的守护/监督模型，补上多进程安全、告警与持久化状态
 8. 更细的事务边界与 outbox/inbox 可靠投递
 
 ## Verification Snapshot
 
 ### Backend
 
-- Full backend suite: `86 passed, 6 skipped`
+- Full backend suite: `91 passed, 6 skipped`
 - Focused reconciliation-worker slice: `5 passed`
+- Focused recovery-planning slice: `5 passed`
 
 覆盖范围包括：
 
@@ -205,9 +209,9 @@
 
 1. 用真实测试账户对 live adapter 做小额白名单联调，并补 exchange response reconciliation / retry / compensation。
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
-3. 把 `adaptation/backtest/ledger/execution/hedge/reconciliation` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控 / 风控中心`。
+3. 把 `adaptation/backtest/ledger/execution/hedge/reconciliation/recovery` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控 / 风控中心`。
 4. 再往下推进真实交易所回报抓取、hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
-5. 把当前 in-process reconciliation worker 升级成更接近生产守护进程的部署形态。
+5. 把当前 in-process reconciliation worker 与 recovery planner 升级成更接近生产守护进程的部署形态。
 6. 再补更严格的事务/补偿边界。
 
 ## Practical Note

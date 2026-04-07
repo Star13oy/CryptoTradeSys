@@ -1,41 +1,41 @@
 # Crypto Funding Arb
 
-## Status
+## 当前状态
 
-As of `2026-04-05`, this repository is no longer just a UI prototype. It now contains a usable phase-1 backend foundation plus a Stitch-aligned multi-page console shell.
+截至 `2026-04-07`，这个仓库已经不再只是一个 UI 原型，而是包含了一个可运行的 `Phase 1` 后端基础设施，以及与 Stitch 原型对齐的多页面控制台外壳。
 
-### Implemented so far
+### 当前已实现
 
-1. Public Binance read path for spot, perp, funding, and console summaries.
-2. Explainable opportunity scoring with:
+1. `Binance` 公共行情读取链路，覆盖现货、永续、资金费率和控制台摘要。
+2. 可解释的机会评分引擎，包含：
    - `gross_edge_bps`
    - `trading_cost_bps`
    - `projected_net_edge_bps`
    - `payback_periods`
    - `expected_hold_periods`
-3. Strategy registry and default `funding-arb` strategy runtime.
-4. Risk policy layer with `allow / review / block` decisions.
-5. Deterministic backtest / replay engine.
-6. Offline adaptation workflow that recommends:
+3. 策略注册表与默认 `funding-arb` 策略运行时。
+4. 风控策略层，支持 `allow / review / block` 决策。
+5. 可重复、确定性的回测 / 回放引擎。
+6. 离线自适应工作流，可生成：
    - `保守方案`
    - `平衡方案`
    - `进取方案`
    - `系统自动推荐`
-7. Historical learning sample storage plus a trade-journal extractor for turning completed trades into reusable learning samples.
-8. Historical backtest dataset storage with import, listing, and `run-from-dataset` replay.
-9. Dataset-backed tuning-package evaluation so `保守 / 平衡 / 进取 / 自动推荐` can be replayed against stored windows before one-click apply.
-10. Shared trade ledger storage with import/list/filter support for `paper` and `live` records.
-11. Audit event storage with import/list/filter support for risk, execution, and recovery events.
-12. A first execution orchestrator that turns `open_hedge / close_hedge` intents into deterministic state transitions, ledger writes, and audit events.
-13. A first authenticated Binance trading client plus live execution adapter boundary for signed spot/perp market orders.
-14. Execution reliability controls including idempotent replay handling, `recovery_pending` state, manual recovery actions, and live-mode preflight guards for `enabled / allowlist / max notional`.
-15. An execution read-side summary API that exposes status counts, recovery queue items, and recent incidents for the console.
-16. A first hedge-manager read model that classifies active trades into `healthy / monitoring / rebalance_required / recovery_required`.
-17. A hedge rebalance-plan API that translates exposure drift into an operator-facing recommended action and perp-notional adjustment hint.
-18. A first reconciliation foundation that imports exchange order reports and compares them against live ledger plus execution audit trails.
-19. Manual-confirmation apply flow so tuning packages do not silently change runtime behavior.
-20. Configurable persistence backends: JSON remains the default for fast local iteration, and MySQL is now available for tuning state, learning samples, journal records, datasets, ledger, audit events, and exchange order reports.
-21. Seven console pages aligned to the Stitch project:
+7. 历史学习样本存储，以及把已完成交易转换成可复用学习样本的 `trade journal extractor`。
+8. 历史回测数据集存储，支持导入、列出以及 `run-from-dataset` 回放。
+9. 基于数据集的 tuning package 评估，可在一键应用前先对 `保守 / 平衡 / 进取 / 自动推荐` 四套配置做回放对比。
+10. 共享交易账本存储，支持 `paper` 与 `live` 两种模式的导入、列表和过滤。
+11. 审计事件存储，支持风控、执行、恢复相关事件的导入、列表和过滤。
+12. 第一版执行编排器，可把 `open_hedge / close_hedge` 意图转成确定性的状态迁移、账本写入和审计事件。
+13. 第一版已签名 `Binance` 交易客户端，以及 live 执行适配器边界，支持现货 / 永续市价单。
+14. 执行可靠性控制，包括幂等重放、`recovery_pending` 状态、手动恢复入口，以及 live 模式下的 `enabled / allowlist / max notional` 预检。
+15. 面向控制台的执行摘要 API，可暴露状态计数、恢复队列和最近事故。
+16. 第一版 `hedge manager` 读模型，可把活跃交易分类成 `healthy / monitoring / rebalance_required / recovery_required`。
+17. 对冲再平衡计划 API，可把暴露偏移转换成操作员可执行的建议动作和永续调整量提示。
+18. 第一版对账底座，可导入交易所订单回报，并与 live ledger 和执行审计轨迹做对比。
+19. tuning package 的人工确认应用流程，避免运行时参数被静默修改。
+20. 可配置持久化后端：默认仍是 JSON，便于本地快速迭代；同时已支持 MySQL 用于保存 tuning state、learning samples、journal、datasets、ledger、audit events 和 exchange order reports。
+21. 与 Stitch 项目对齐的 7 个控制台页面：
    - `总览指挥台`
    - `机会扫描页`
    - `持仓监控`
@@ -43,14 +43,15 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
    - `回测实验室`
    - `模型工作台`
    - `审计与日志中心`
-22. JSON-to-MySQL backfill tooling plus a reconciliation candidate read model for surfacing trades that still need exchange-report follow-up.
-23. Authenticated reconciliation sync that can pull spot/perp order status from Binance for a specific live trade or the highest-priority attention queue, then upsert the resulting exchange reports.
-24. A lightweight in-process reconciliation worker with status and manual-run APIs so attention-queue exchange sync can run on an interval instead of only by operator trigger.
-25. Dashboard and scan pages now surface raw market detail alongside strategy scores, including `spot/perp bid-ask`, `mid`, `basis`, and combined spread cost.
+22. `JSON -> MySQL` 回填工具，以及一套 `reconciliation candidate` 读模型，用于暴露仍需要跟进交易所回报的交易。
+23. 已签名的对账同步能力，可针对单笔 live trade 或 attention queue 中优先级最高的一批交易，主动从 Binance 拉取现货 / 永续订单状态并更新回报。
+24. 轻量级 in-process `reconciliation worker`，带状态查询和手动触发 API，使 attention queue 同步不再只能靠操作员手动触发。
+25. 总览页与扫描页已经展示原始行情细节，不再只有评分，包括 `spot/perp bid-ask`、`mid`、`basis` 和双腿点差成本。
+26. 恢复规划层，可把 `failed / recovery_pending` 交易转成显式的 `resume_open / resume_close / manual_review` 计划，并只对当前安全可恢复的子集做批量自动执行。
 
-## Current Backend Surface
+## 当前后端能力面
 
-### Read and algo APIs
+### 读接口与算法接口
 
 1. `/health`
 2. `/api/v1/dashboard/summary`
@@ -87,59 +88,63 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 33. `/api/v1/algo/reconciliation/sync`
 34. `/api/v1/algo/reconciliation/worker`
 35. `/api/v1/algo/reconciliation/worker/run`
+36. `/api/v1/algo/recovery/plans`
+37. `/api/v1/algo/recovery/execute-auto`
 
-### Runtime modules
+### 运行时模块
 
-- `backend/app/console/`: console read service
-- `backend/app/opportunity/`: scoring engine
-- `backend/app/strategy/`: strategy abstraction and registry
-- `backend/app/risk/`: risk policy
-- `backend/app/backtest/`: replay / backtest engine
-- `backend/app/adaptation/`: offline learning and tuning recommendations
-- `backend/app/journal/`: completed-trade journal and extraction bridge
-- `backend/app/ledger/`: shared paper/live trade ledger
-- `backend/app/audit/`: event audit persistence and query surface
-- `backend/app/execution/`: execution intent orchestration, recovery flow, and execution summary read model
-- `backend/app/hedge/`: hedge-health classification and rebalance/recovery overview
-- `backend/app/reconciliation/`: imported exchange-order reports and ledger/audit reconciliation summary
-- `backend/app/reconciliation/worker.py`: interval-based attention-queue sync worker and runtime snapshot
-- `backend/app/persistence/`: optional MySQL persistence helpers and backend selection
-- `backend/app/persistence/migration.py`: JSON-to-MySQL backfill service and summary schema
-- `backend/app/exchange/binance_trading.py`: authenticated Binance trading client for signed order placement
-- `backend/app/reconciliation/service.py`: reconciliation summary, candidate list, and authenticated trade/batch exchange sync
+- `backend/app/console/`：控制台读服务
+- `backend/app/opportunity/`：评分引擎
+- `backend/app/strategy/`：策略抽象与注册表
+- `backend/app/risk/`：风控策略
+- `backend/app/backtest/`：回放 / 回测引擎
+- `backend/app/adaptation/`：离线学习与 tuning recommendation
+- `backend/app/journal/`：已完成交易 journal 与样本提取桥接
+- `backend/app/ledger/`：共享的 paper/live 交易账本
+- `backend/app/audit/`：审计事件持久化与查询
+- `backend/app/execution/`：执行意图编排、恢复流程和执行摘要读模型
+- `backend/app/hedge/`：对冲健康度分类与再平衡 / 恢复概览
+- `backend/app/reconciliation/`：交易所订单回报、账本 / 审计对账摘要
+- `backend/app/reconciliation/worker.py`：基于间隔轮询的 attention queue 同步 worker 与运行状态快照
+- `backend/app/recovery/`：恢复规划、动作可执行性判断与自动恢复摘要
+- `backend/app/persistence/`：可选 MySQL 持久化与后端选择逻辑
+- `backend/app/persistence/migration.py`：`JSON -> MySQL` 回填服务与摘要 schema
+- `backend/app/exchange/binance_trading.py`：已签名 Binance 交易客户端
+- `backend/app/reconciliation/service.py`：对账摘要、候选列表，以及基于交易所订单查询的单笔 / 批量同步
 
-## Project Structure
+## 项目结构
 
-- `backend/`: FastAPI service, exchange client, schemas, algorithms, tests
-- `frontend/`: Vite + React console, Stitch-aligned pages, tests
-- `docs/superpowers/specs/`: design and requirements docs
-- `docs/superpowers/plans/`: implementation plans and progress updates
-- `docs/architecture/`: living architecture and technical deep-dive docs
+- `backend/`：FastAPI 服务、交易所客户端、schemas、算法与测试
+- `frontend/`：Vite + React 控制台、与 Stitch 对齐的页面、前端测试
+- `docs/superpowers/specs/`：设计与需求文档
+- `docs/superpowers/plans/`：实施计划与进度文档
+- `docs/architecture/`：架构说明与技术深潜文档
 
-## Verification Snapshot
+## 验证快照
 
-Latest verified status in this worktree:
+当前 worktree 最新验证结果：
 
-1. Full backend suite: `86 passed, 6 skipped`
+1. Full backend suite: `91 passed, 6 skipped`
 2. Focused reconciliation-worker slice: `5 passed`
 3. Full frontend suite: `18 passed`
 4. Frontend production build: `vite build` passed
-5. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
-6. Trade-journal extraction now supports symbol filtering, recent-N slicing, and deterministic ordering.
-7. Historical backtest datasets can now be imported, listed, replayed, and used to compare tuning packages before apply.
-8. Hedge overview now classifies active trades by exposure drift and recovery state so positions/risk pages can consume a stable backend contract.
-9. Hedge rebalance plans now convert drift into explicit `increase/reduce perp hedge` recommendations for operator tooling.
-10. Reconciliation can now import exchange order snapshots and flag missing exchange reports or local/exchange status mismatches.
-11. Reconciliation can now list trade-centric candidate contexts so operators can see expected order ids, reported order ids, and missing legs before opening the summary drawer.
-12. JSON-backed historical state can now be backfilled into MySQL without duplicating previously imported payloads.
-13. A specific live trade can now trigger authenticated exchange-order sync so reconciliation is no longer limited to manual report imports.
-14. The risk center now consumes reconciliation candidates directly, so attention-needed trades show up in the UI without demo-only placeholders.
-15. The reconciliation service can now batch-sync the highest-priority attention queue, which is now wired into a lightweight interval worker.
-16. Dashboard and scan now expose raw `spot/perp bid-ask`, `mid`, `basis`, and spread-cost detail instead of only derived scores.
+5. 在 `projected-edge` 口径校准后，真实 Binance 烟测已不再出现“全为零分”的情况，系统能筛出正分机会。
+6. `trade journal` 提取已支持按 `symbol` 过滤、最近 `N` 条截取和确定性顺序。
+7. 历史回测数据集已支持导入、列出、回放，以及用于 tuning package 应用前评估。
+8. `hedge overview` 已能按暴露偏移与恢复状态做分类，供持仓页和风控页直接消费。
+9. `hedge rebalance plan` 已能把漂移转换为明确的 `increase/reduce perp hedge` 建议。
+10. 对账层已能导入交易所订单快照，并识别缺失回报与本地 / 交易所状态不一致。
+11. 对账层已能给出以交易为中心的 candidate context，展示预期订单、已回报订单和缺失腿。
+12. JSON 历史状态已支持幂等回填到 MySQL，避免重复导入。
+13. 单笔 live trade 已支持触发已签名交易所查询，因此对账不再局限于手工导入。
+14. 风控中心已经直接消费 `reconciliation candidates`，需要关注的交易会直接出现在 UI 中，而不是占位演示数据。
+15. `reconciliation service` 已支持对高优先级 attention queue 做批量同步，并通过轻量级 interval worker 运行。
+16. 总览与扫描页现在会展示原始 `spot/perp bid-ask`、`mid`、`basis` 和 spread 成本，而不是只显示派生评分。
+17. 恢复规划层现在可以把 `failed / recovery_pending` 交易分类为 `resume_open / resume_close / manual_review`，且自动恢复接口只会执行当前对账上下文下安全的那部分计划。
 
-## Local Setup
+## 本地启动
 
-### Backend
+### 后端
 
 ```powershell
 python -m venv .venv
@@ -149,7 +154,7 @@ $env:PYTHONPATH = "backend"
 .\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
 
-### Backend with MySQL persistence
+### 使用 MySQL 持久化的后端
 
 ```powershell
 mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS crypto_funding_arb;"
@@ -162,41 +167,48 @@ $env:FUNDING_ARB_MYSQL_DATABASE = "crypto_funding_arb"
 .\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
 
-A ready-to-edit template is available at `.env.example`.
+可直接编辑的环境变量模板见 `.env.example`。
 
-For opt-in MySQL persistence tests:
+如需运行可选的 MySQL 持久化测试：
 
 ```powershell
 $env:FUNDING_ARB_RUN_MYSQL_TESTS = "1"
 .\.venv\Scripts\python -m pytest backend/tests/test_mysql_store_integration.py -q
 ```
 
-To backfill existing JSON state into MySQL once the database backend is enabled:
+启用数据库后端后，如需将现有 JSON 状态回填到 MySQL：
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/persistence/backfill-json"
 ```
 
-To sync exchange order reports for a specific live trade:
+如需为指定 live trade 同步交易所订单回报：
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/sync/<trade_id>"
 ```
 
-To batch-sync the current attention queue:
+如需批量同步当前 attention queue：
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/sync?limit=5"
 ```
 
-To inspect or manually tick the reconciliation worker once it is enabled:
+启用 `reconciliation worker` 后，如需查看状态或手动触发一轮：
 
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/worker"
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/worker/run"
 ```
 
-### Frontend
+如需查看恢复计划，或只执行可自动恢复的子集：
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/recovery/plans"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/recovery/execute-auto?limit=2"
+```
+
+### 前端
 
 ```powershell
 Set-Location frontend
@@ -206,14 +218,14 @@ npm run build
 npm run dev
 ```
 
-## What Is Still Missing
+## 仍未完成的部分
 
-This repository still stops short of a true production trading loop. The next major gaps are:
+这个仓库距离真正的生产级交易闭环还有差距，主要缺口包括：
 
-1. Real authenticated Binance execution adapters now have preflight guards and recovery rails, but still need exchange-grade fill reconciliation, retry policy, and live rollback/compensation against real responses.
-2. Position ledger enrichment and hedge manager action execution on top of the current hedge overview read model.
-3. Authenticated ingestion / sync for richer historical market + trade data instead of manual dataset import.
-4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls beyond the dashboard/scan/positions/risk surfaces already wired.
-5. Live guard daemons for circuit breakers, rebalance, and recovery workers.
-6. Migration/backfill utilities and stronger transactional guarantees on top of the newly added MySQL backend.
-7. Moving the new in-process reconciliation worker into a more production-ready daemon/supervisor model with stronger persistence, alerting, and multi-process safety.
+1. 已签名 Binance 执行链路虽然已经有预检、恢复轨道和恢复规划，但还缺真正交易所级别的成交回报对账、重试策略，以及基于真实响应的回滚 / 补偿。
+2. 在当前 `hedge overview` 读模型之上，还缺持仓账本补强和 `hedge manager` 的动作执行闭环。
+3. 更完整的已签名历史市场 / 历史交易数据采集与同步，而不是只靠手工导入数据集。
+4. 前端仍需把回测、模型、账本、执行、自适应和恢复控制真正接到页面上，目前已接好的仍主要是 dashboard / scan / positions / risk。
+5. live 场景下仍缺 circuit breaker、rebalance worker、recovery worker 等真正的守护进程。
+6. 基于 MySQL 的更强事务边界、回填工具和一致性保证还需要继续补。
+7. 当前的 in-process reconciliation worker 还要进一步升级为更接近生产的 daemon / supervisor 形态，补上更强的持久化、告警与多进程安全。

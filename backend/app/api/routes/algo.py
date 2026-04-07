@@ -54,6 +54,7 @@ from app.reconciliation import (
     ReconciliationWorker,
     ReconciliationWorkerSnapshot,
 )
+from app.recovery import RecoveryExecutionSummary, RecoveryPlanListResponse, RecoveryService
 from app.schemas.adaptation import (
     AdaptationPackageEvaluationRequest,
     AdaptationPackageEvaluationResponse,
@@ -182,6 +183,14 @@ def get_reconciliation_worker(request: Request) -> ReconciliationWorker:
         worker = build_reconciliation_worker()
         request.app.state.reconciliation_worker = worker
     return worker
+
+
+def get_recovery_service(
+    ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
+    audit_service: AuditEventService = Depends(get_audit_event_service),
+    reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
+) -> RecoveryService:
+    return RecoveryService(ledger_service, audit_service, reconciliation_service)
 
 
 def get_persistence_backfill_service() -> JsonToMySQLBackfillService:
@@ -505,6 +514,36 @@ async def run_reconciliation_worker_once(
         return await worker.run_once()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/recovery/plans", response_model=RecoveryPlanListResponse)
+async def list_recovery_plans(
+    symbol: str | None = None,
+    only_actionable: bool = False,
+    recovery_service: RecoveryService = Depends(get_recovery_service),
+) -> RecoveryPlanListResponse:
+    return RecoveryPlanListResponse(
+        plans=recovery_service.list_plans(symbol=symbol, only_actionable=only_actionable),
+    )
+
+
+@router.post("/recovery/execute-auto", response_model=RecoveryExecutionSummary)
+async def execute_recovery_plans(
+    limit: int | None = None,
+    symbol: str | None = None,
+    recovery_service: RecoveryService = Depends(get_recovery_service),
+    orchestrator: ExecutionOrchestrator = Depends(get_execution_orchestrator),
+) -> RecoveryExecutionSummary:
+    if symbol is None:
+        return recovery_service.execute_actionable_plans(
+            orchestrator=orchestrator,
+            limit=limit,
+        )
+    return recovery_service.execute_actionable_plans(
+        orchestrator=orchestrator,
+        limit=limit,
+        symbol=symbol,
+    )
 
 
 @router.get("/reconciliation/summary", response_model=ReconciliationSummary)
