@@ -703,6 +703,37 @@ select {
   cursor: pointer;
 }
 
+.market-pulse {
+  display: grid;
+  gap: 14px;
+}
+
+.market-pulse__headline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.market-pulse__headline strong {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.market-pulse__headline span {
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+
+.market-pulse__grid {
+  display: grid;
+  gap: 12px;
+}
+
 .timeline-list {
   display: grid;
   gap: 14px;

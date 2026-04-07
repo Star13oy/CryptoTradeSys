@@ -20,6 +20,20 @@ function formatSignedBps(value: number) {
   return `${prefix}${value.toFixed(2)} bps`;
 }
 
+function formatQuotePair(bid: number | undefined, ask: number | undefined) {
+  if (bid === undefined || ask === undefined) {
+    return "-- / --";
+  }
+  return `${bid.toFixed(2)} / ${ask.toFixed(2)}`;
+}
+
+function formatFixed(value: number | undefined, digits = 2) {
+  if (value === undefined) {
+    return "--";
+  }
+  return value.toFixed(digits);
+}
+
 function formatCoverage(summary: DashboardSummary) {
   const denominator = Math.max(summary.market_status.requested_symbols, 1);
   return `${((summary.market_status.quoted_symbols / denominator) * 100).toFixed(1)}%`;
@@ -70,6 +84,7 @@ export function DashboardPage() {
         data.top_opportunities.length
       : 0;
   const distribution = buildDistribution(data);
+  const topOpportunity = data?.top_opportunities[0];
   const distributionGradient = distribution.reduce<string[]>((segments, segment, index) => {
     const previousTotal = distribution
       .slice(0, index)
@@ -298,6 +313,45 @@ export function DashboardPage() {
               <button className="risk-panel__force-button" type="button">
                 紧急一键平仓 (FORCE CLOSE)
               </button>
+            </div>
+          </article>
+
+          <article className="dashboard-card">
+            <div className="dashboard-card__header dashboard-card__header--compact">
+              <div>
+                <p className="dashboard-card__eyebrow">Market Pulse</p>
+                <h2>实时行情脉冲</h2>
+              </div>
+            </div>
+
+            <div className="market-pulse">
+              <div className="market-pulse__headline">
+                <strong>{topOpportunity?.symbol ?? "等待行情"}</strong>
+                <span>
+                  {topOpportunity && topOpportunity.basis_bps !== undefined
+                    ? `${topOpportunity.basis_bps.toFixed(2)} bps basis`
+                    : "等待首批机会"}
+                </span>
+              </div>
+
+              <div className="market-pulse__grid">
+                <div className="risk-stat">
+                  <span>现货买一 / 卖一</span>
+                  <strong>{formatQuotePair(topOpportunity?.spot_bid, topOpportunity?.spot_ask)}</strong>
+                </div>
+                <div className="risk-stat">
+                  <span>永续买一 / 卖一</span>
+                  <strong>{formatQuotePair(topOpportunity?.perp_bid, topOpportunity?.perp_ask)}</strong>
+                </div>
+                <div className="risk-stat">
+                  <span>现货中间价</span>
+                  <strong>{formatFixed(topOpportunity?.spot_mid)}</strong>
+                </div>
+                <div className="risk-stat">
+                  <span>永续中间价</span>
+                  <strong>{formatFixed(topOpportunity?.perp_mid)}</strong>
+                </div>
+              </div>
             </div>
           </article>
 

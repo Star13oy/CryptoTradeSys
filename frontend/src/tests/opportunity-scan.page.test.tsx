@@ -21,8 +21,31 @@ test("scan page renders the Chinese title", async () => {
           requested_symbols: 8,
           quoted_symbols: 8,
         },
-        total_matches: 0,
-        rows: [],
+        total_matches: 1,
+        rows: [
+          {
+            symbol: "BTCUSDT",
+            funding_rate: 0.0002,
+            net_edge_bps: 1.84,
+            score: 12.5,
+            risk_tag: "normal",
+            gross_edge_bps: 2.0,
+            trading_cost_bps: 0.16,
+            annualized_funding_rate_pct: 21.9,
+            basis_bps: 1.17,
+            projected_net_edge_bps: 11.84,
+            payback_periods: 0.8,
+            expected_hold_periods: 6,
+            spot_bid: 59998,
+            spot_ask: 60000,
+            spot_mid: 59999,
+            perp_bid: 60004,
+            perp_ask: 60006,
+            perp_mid: 60005,
+            perp_spread_bps: 0.33,
+            spot_spread_bps: 0.33,
+          },
+        ],
       }),
     }) as Response) as typeof fetch;
 
@@ -30,5 +53,10 @@ test("scan page renders the Chinese title", async () => {
   expect(screen.getByText("QUANT_ADMIN")).toBeTruthy();
   expect(screen.getByText("机会扫描器 (Scanner)")).toBeTruthy();
   expect(screen.getByText("交易对搜索")).toBeTruthy();
-  await waitFor(() => expect(screen.getByText("BTC/USDT 套利分析")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("59998.0000 / 60000.0000")).toBeTruthy());
+  expect(screen.getByText("BTC/USDT 套利分析")).toBeTruthy();
+  expect(screen.getByText("现货买一 / 卖一")).toBeTruthy();
+  expect(screen.getByText("59998.0000 / 60000.0000")).toBeTruthy();
+  expect(screen.getByText("永续买一 / 卖一")).toBeTruthy();
+  expect(screen.getByText("60004.0000 / 60006.0000")).toBeTruthy();
 });

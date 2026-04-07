@@ -30,6 +30,10 @@ def build_market_snapshot(funding_rows: list[dict], perp_rows: list[dict], spot_
             MarketSnapshot(
                 symbol=symbol,
                 funding_rate=float(funding_rate),
+                perp_bid=perp_bid,
+                perp_ask=perp_ask,
+                spot_bid=spot_bid,
+                spot_ask=spot_ask,
                 perp_mid=perp_mid,
                 spot_mid=spot_mid,
                 perp_spread_bps=((perp_ask - perp_bid) / perp_mid) * 10000,

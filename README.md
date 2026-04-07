@@ -45,6 +45,8 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
    - `审计与日志中心`
 22. JSON-to-MySQL backfill tooling plus a reconciliation candidate read model for surfacing trades that still need exchange-report follow-up.
 23. Authenticated reconciliation sync that can pull spot/perp order status from Binance for a specific live trade or the highest-priority attention queue, then upsert the resulting exchange reports.
+24. A lightweight in-process reconciliation worker with status and manual-run APIs so attention-queue exchange sync can run on an interval instead of only by operator trigger.
+25. Dashboard and scan pages now surface raw market detail alongside strategy scores, including `spot/perp bid-ask`, `mid`, `basis`, and combined spread cost.
 
 ## Current Backend Surface
 
@@ -83,6 +85,8 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 31. `/api/v1/algo/persistence/backfill-json`
 32. `/api/v1/algo/reconciliation/sync/{trade_id}`
 33. `/api/v1/algo/reconciliation/sync`
+34. `/api/v1/algo/reconciliation/worker`
+35. `/api/v1/algo/reconciliation/worker/run`
 
 ### Runtime modules
 
@@ -98,6 +102,7 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 - `backend/app/execution/`: execution intent orchestration, recovery flow, and execution summary read model
 - `backend/app/hedge/`: hedge-health classification and rebalance/recovery overview
 - `backend/app/reconciliation/`: imported exchange-order reports and ledger/audit reconciliation summary
+- `backend/app/reconciliation/worker.py`: interval-based attention-queue sync worker and runtime snapshot
 - `backend/app/persistence/`: optional MySQL persistence helpers and backend selection
 - `backend/app/persistence/migration.py`: JSON-to-MySQL backfill service and summary schema
 - `backend/app/exchange/binance_trading.py`: authenticated Binance trading client for signed order placement
@@ -115,8 +120,8 @@ As of `2026-04-05`, this repository is no longer just a UI prototype. It now con
 
 Latest verified status in this worktree:
 
-1. Full backend suite with MySQL slice enabled: `87 passed`
-2. Opt-in MySQL integration slice: `3 passed`
+1. Full backend suite: `86 passed, 6 skipped`
+2. Focused reconciliation-worker slice: `5 passed`
 3. Full frontend suite: `18 passed`
 4. Frontend production build: `vite build` passed
 5. Real Binance smoke test after the projected-edge scoring update produced positive-ranked opportunities again instead of all-zero scoring.
@@ -129,7 +134,8 @@ Latest verified status in this worktree:
 12. JSON-backed historical state can now be backfilled into MySQL without duplicating previously imported payloads.
 13. A specific live trade can now trigger authenticated exchange-order sync so reconciliation is no longer limited to manual report imports.
 14. The risk center now consumes reconciliation candidates directly, so attention-needed trades show up in the UI without demo-only placeholders.
-15. The reconciliation service can now batch-sync the highest-priority attention queue, which is a cleaner bridge toward a future background worker.
+15. The reconciliation service can now batch-sync the highest-priority attention queue, which is now wired into a lightweight interval worker.
+16. Dashboard and scan now expose raw `spot/perp bid-ask`, `mid`, `basis`, and spread-cost detail instead of only derived scores.
 
 ## Local Setup
 
@@ -183,6 +189,13 @@ To batch-sync the current attention queue:
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/sync?limit=5"
 ```
 
+To inspect or manually tick the reconciliation worker once it is enabled:
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/worker"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/reconciliation/worker/run"
+```
+
 ### Frontend
 
 ```powershell
@@ -203,4 +216,4 @@ This repository still stops short of a true production trading loop. The next ma
 4. Frontend integration for backtest, model tuning, ledger, execution, and adaptation controls beyond the dashboard/scan/positions/risk surfaces already wired.
 5. Live guard daemons for circuit breakers, rebalance, and recovery workers.
 6. Migration/backfill utilities and stronger transactional guarantees on top of the newly added MySQL backend.
-7. Automatic daemonized exchange report pull/sync so reconciliation no longer depends on manual or operator-triggered imports.
+7. Moving the new in-process reconciliation worker into a more production-ready daemon/supervisor model with stronger persistence, alerting, and multi-process safety.

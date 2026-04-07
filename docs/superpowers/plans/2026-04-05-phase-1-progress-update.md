@@ -28,6 +28,8 @@
 13. 已补上 reconciliation candidates 读接口，可直接看到每笔 live trade 的预期订单、已回报订单、缺失腿和建议动作。
 14. 已补上基于 `trade_id` 的 authenticated reconciliation sync，可主动向 Binance 拉 spot/perp 订单状态并回写 exchange reports。
 15. 已补上 attention queue 级别的 reconciliation 批量 sync，可按优先级拉取最需要关注的一批 live trade 订单状态。
+16. 已补上轻量级 in-process reconciliation worker，可按固定间隔自动同步 attention queue，并暴露 worker status / manual run API。
+17. 总览页与扫描页已补上原始行情细节层，可直接看到 `spot/perp bid-ask`、`mid`、`basis` 与双腿点差成本。
 
 ## What Is Implemented
 
@@ -113,6 +115,7 @@
 20. 已支持 `/api/v1/algo/reconciliation/sync/{trade_id}`，用已存在的 live audit 上下文推导预期订单并拉取交易所最新状态。
 21. 已支持 `/api/v1/algo/reconciliation/sync?limit=N`，可对当前 attention candidates 做受控批量同步。
 22. 风控中心页面已接上 `/api/v1/algo/reconciliation/candidates`，能直接展示待对账候选、缺失订单与建议动作。
+23. 已支持 `/api/v1/algo/reconciliation/worker` 与 `/api/v1/algo/reconciliation/worker/run`，便于查看后台同步状态并做受控手动触发。
 
 ## Real Progress Against The Original Design
 
@@ -139,14 +142,15 @@
 4. 更完整的历史数据仓库与自动采集
 5. live risk / rebalance / recovery 进程
 6. 自适应建议包的前端工作台联调
-7. 守护进程化的自动抓取交易所订单回报，减少人工或手动触发 reconciliation sync 的步骤
+7. 将当前 in-process reconciliation worker 进一步提升成更生产化的守护/监督模型，补上多进程安全、告警与持久化状态
 8. 更细的事务边界与 outbox/inbox 可靠投递
 
 ## Verification Snapshot
 
 ### Backend
 
-- Full backend suite with MySQL slice enabled: `87 passed`
+- Full backend suite: `86 passed, 6 skipped`
+- Focused reconciliation-worker slice: `5 passed`
 
 覆盖范围包括：
 
@@ -181,7 +185,7 @@
 
 ### Frontend
 
-- Full frontend suite: `17 passed`
+- Full frontend suite: `18 passed`
 - `npm run build`: passed
 
 ### Live scoring smoke result
@@ -203,7 +207,7 @@
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
 3. 把 `adaptation/backtest/ledger/execution/hedge/reconciliation` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控 / 风控中心`。
 4. 再往下推进真实交易所回报抓取、hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
-5. 把已落地的 attention-queue 批量 sync 继续推进成定时/守护进程化的交易所回报抓取。
+5. 把当前 in-process reconciliation worker 升级成更接近生产守护进程的部署形态。
 6. 再补更严格的事务/补偿边界。
 
 ## Practical Note

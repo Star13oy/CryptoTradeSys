@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.adaptation.service import AdaptationService
 from app.audit import (
@@ -51,6 +51,8 @@ from app.reconciliation import (
     ExchangeOrderReportListResponse,
     ReconciliationService,
     ReconciliationSummary,
+    ReconciliationWorker,
+    ReconciliationWorkerSnapshot,
 )
 from app.schemas.adaptation import (
     AdaptationPackageEvaluationRequest,
@@ -149,6 +151,37 @@ def get_reconciliation_service(
         ledger_service,
         audit_service,
     )
+
+
+def build_reconciliation_worker() -> ReconciliationWorker:
+    settings = get_settings()
+    ledger_service = TradeLedgerService(TradeLedgerStore(settings.trade_ledger_path))
+    audit_service = AuditEventService(AuditEventStore(settings.audit_event_path))
+    from app.reconciliation import ExchangeOrderReportStore
+
+    reconciliation_service = ReconciliationService(
+        ExchangeOrderReportStore(settings.exchange_order_report_path),
+        ledger_service,
+        audit_service,
+    )
+    trading_client = None
+    if settings.binance_api_key and settings.binance_api_secret:
+        trading_client = BinanceTradingClient()
+    return ReconciliationWorker(
+        reconciliation_service,
+        trading_client=trading_client,
+        enabled=settings.reconciliation_worker_enabled,
+        interval_seconds=settings.reconciliation_worker_interval_seconds,
+        limit=settings.reconciliation_worker_limit,
+    )
+
+
+def get_reconciliation_worker(request: Request) -> ReconciliationWorker:
+    worker = getattr(request.app.state, "reconciliation_worker", None)
+    if worker is None:
+        worker = build_reconciliation_worker()
+        request.app.state.reconciliation_worker = worker
+    return worker
 
 
 def get_persistence_backfill_service() -> JsonToMySQLBackfillService:
@@ -455,6 +488,23 @@ async def sync_attention_reconciliation_reports(
         imported_reports=len(persisted),
         total_reports=len(persisted),
     )
+
+
+@router.get("/reconciliation/worker", response_model=ReconciliationWorkerSnapshot)
+async def get_reconciliation_worker_status(
+    worker: ReconciliationWorker = Depends(get_reconciliation_worker),
+) -> ReconciliationWorkerSnapshot:
+    return worker.snapshot()
+
+
+@router.post("/reconciliation/worker/run", response_model=ReconciliationWorkerSnapshot)
+async def run_reconciliation_worker_once(
+    worker: ReconciliationWorker = Depends(get_reconciliation_worker),
+) -> ReconciliationWorkerSnapshot:
+    try:
+        return await worker.run_once()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/reconciliation/summary", response_model=ReconciliationSummary)

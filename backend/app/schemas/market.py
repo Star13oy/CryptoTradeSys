@@ -4,6 +4,10 @@ from pydantic import BaseModel, Field
 class MarketSnapshot(BaseModel):
     symbol: str
     funding_rate: float
+    perp_bid: float = 0.0
+    perp_ask: float = 0.0
+    spot_bid: float = 0.0
+    spot_ask: float = 0.0
     perp_mid: float
     spot_mid: float
     perp_spread_bps: float
@@ -28,6 +32,14 @@ class OpportunityScore(BaseModel):
     net_edge_bps: float
     score: float
     risk_tag: str
+    perp_bid: float = 0.0
+    perp_ask: float = 0.0
+    spot_bid: float = 0.0
+    spot_ask: float = 0.0
+    perp_mid: float = 0.0
+    spot_mid: float = 0.0
+    perp_spread_bps: float = 0.0
+    spot_spread_bps: float = 0.0
     gross_edge_bps: float = 0.0
     trading_cost_bps: float = 0.0
     annualized_funding_rate_pct: float = 0.0

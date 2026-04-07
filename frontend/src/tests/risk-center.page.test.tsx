@@ -6,6 +6,26 @@ import { renderWithProviders } from "./render-with-providers";
 test("risk center page loads execution summary", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url === "/api/v1/algo/reconciliation/worker") {
+      return {
+        ok: true,
+        json: async () => ({
+          enabled: true,
+          configured: true,
+          running: true,
+          interval_seconds: 30,
+          limit: 5,
+          total_runs: 4,
+          total_failed_runs: 1,
+          total_imported_reports: 8,
+          last_imported_report_count: 2,
+          last_synced_trade_count: 1,
+          last_success_at: "2026-04-05T11:22:00Z",
+          last_error: null,
+        }),
+      } as Response;
+    }
+
     if (url.startsWith("/api/v1/algo/reconciliation/candidates")) {
       return {
         ok: true,
@@ -88,6 +108,10 @@ test("risk center page loads execution summary", async () => {
   expect(screen.getByText("spot-1, perp-2")).toBeTruthy();
   expect(screen.getByText("inspect_exchange")).toBeTruthy();
   expect(screen.getByText("是")).toBeTruthy();
+  expect(screen.getByText("自动对账 Worker")).toBeTruthy();
+  expect(screen.getByText("RUNNING")).toBeTruthy();
+  expect(screen.getByText("累计同步 8 条回报")).toBeTruthy();
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=6");
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/worker");
 });

@@ -10,5 +10,7 @@ __pycache__/
 .env
 *.out.log
 *.err.log
+*-dev.log
 backend/.tmp-test-state/
+backend/pytest-cache-files-*/
 backend/backend/

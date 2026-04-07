@@ -6,6 +6,10 @@ def make_snapshot(
     *,
     symbol: str = "BTCUSDT",
     funding_rate: float,
+    perp_bid: float = 60005,
+    perp_ask: float = 60007,
+    spot_bid: float = 59999,
+    spot_ask: float = 60001,
     perp_mid: float = 60000,
     spot_mid: float = 60000,
     perp_spread_bps: float = 0.4,
@@ -14,6 +18,10 @@ def make_snapshot(
     return MarketSnapshot(
         symbol=symbol,
         funding_rate=funding_rate,
+        perp_bid=perp_bid,
+        perp_ask=perp_ask,
+        spot_bid=spot_bid,
+        spot_ask=spot_ask,
         perp_mid=perp_mid,
         spot_mid=spot_mid,
         perp_spread_bps=perp_spread_bps,
@@ -33,6 +41,10 @@ def test_score_snapshot_marks_high_quality_opportunity_normal() -> None:
     assert scored.basis_bps > 0
     assert scored.score > 0
     assert scored.score_breakdown.carry_component > scored.score_breakdown.cost_penalty
+    assert scored.perp_bid == 60005
+    assert scored.perp_ask == 60007
+    assert scored.spot_bid == 59999
+    assert scored.spot_ask == 60001
 
 
 def test_score_snapshot_penalizes_large_basis_and_marks_guarded() -> None:

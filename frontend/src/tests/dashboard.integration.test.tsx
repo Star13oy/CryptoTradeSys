@@ -40,5 +40,5 @@ test("dashboard page shows loading state before rendering a fetched opportunity 
     }),
   } as Response);
 
-  await waitFor(() => expect(screen.getByText("XRPUSDT")).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText("XRPUSDT").length).toBeGreaterThan(0));
 });

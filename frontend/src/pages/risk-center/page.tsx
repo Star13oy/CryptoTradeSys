@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../../shared/api/client";
-import type { ExecutionSummaryResponse, ReconciliationCandidateListResponse } from "../../shared/contracts/console";
+import type {
+  ExecutionSummaryResponse,
+  ReconciliationCandidateListResponse,
+  ReconciliationWorkerStatus,
+} from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
 function buildRiskLevel(summary: ExecutionSummaryResponse | undefined) {
@@ -31,6 +35,22 @@ function formatMissingOrderIds(missingOrderIds: string[]) {
   return missingOrderIds.length > 0 ? missingOrderIds.join(", ") : "—";
 }
 
+function buildWorkerState(worker: ReconciliationWorkerStatus | undefined) {
+  if (!worker) {
+    return "SYNCING";
+  }
+  if (!worker.enabled) {
+    return "DISABLED";
+  }
+  if (!worker.configured) {
+    return "MISCONFIGURED";
+  }
+  if (worker.running) {
+    return "RUNNING";
+  }
+  return "IDLE";
+}
+
 export function RiskCenterPage() {
   const summaryQuery = useQuery({
     queryKey: ["execution-summary", 6],
@@ -40,8 +60,14 @@ export function RiskCenterPage() {
     queryKey: ["reconciliation-candidates"],
     queryFn: () => apiClient.getReconciliationCandidates<ReconciliationCandidateListResponse>(),
   });
+  const workerQuery = useQuery({
+    queryKey: ["reconciliation-worker"],
+    queryFn: () => apiClient.getReconciliationWorker<ReconciliationWorkerStatus>(),
+  });
 
   const summary = summaryQuery.data;
+  const worker = workerQuery.data;
+  const workerState = buildWorkerState(worker);
   const riskLevel = buildRiskLevel(summary);
   const anomalyCards = [
     {
@@ -115,7 +141,7 @@ export function RiskCenterPage() {
       <span>
         {candidatesQuery.data ? `对账候选 ${reconciliationCandidates.length} 笔` : "等待对账候选同步"}
       </span>
-      <span>{summaryQuery.isError ? "执行摘要异常" : "EXECUTION SUMMARY ONLINE"}</span>
+      <span>{workerQuery.isError ? "WORKER OFFLINE" : `WORKER ${workerState}`}</span>
     </>
   );
 
@@ -194,6 +220,49 @@ export function RiskCenterPage() {
                 </button>
                 <button className="proto-button proto-button--ghost" type="button">
                   同步规则
+                </button>
+              </div>
+            </article>
+
+            <article className="proto-panel">
+              <p className="proto-panel__eyebrow">Auto Reconciliation</p>
+              <h3>自动对账 Worker</h3>
+              <div className="proto-risk-badge">{workerState}</div>
+              <span className="proto-meta">
+                {worker ? `累计同步 ${worker.total_imported_reports} 条回报` : "等待 worker 状态同步"}
+              </span>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近一轮同步</span>
+                  <strong>{worker ? `${worker.last_imported_report_count} 条` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className="proto-progress__fill"
+                    style={{ width: `${Math.min(100, (worker?.last_imported_report_count ?? 0) * 18)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近同步交易数</span>
+                  <strong>{worker ? `${worker.last_synced_trade_count} 笔` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className={`proto-progress__fill${
+                      (worker?.total_failed_runs ?? 0) > 0 ? " proto-progress__fill--warning" : ""
+                    }`}
+                    style={{ width: `${Math.min(100, (worker?.last_synced_trade_count ?? 0) * 22)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-action-grid proto-action-grid--two">
+                <button className="proto-button proto-button--ghost" type="button">
+                  间隔 {worker?.interval_seconds ?? 30}s
+                </button>
+                <button className="proto-button proto-button--ghost" type="button">
+                  {worker?.last_error ? "存在错误" : "状态正常"}
                 </button>
               </div>
             </article>

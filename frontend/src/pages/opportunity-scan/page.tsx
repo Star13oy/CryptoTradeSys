@@ -37,6 +37,34 @@ function annualizedYield(fundingRate: number) {
   return fundingRate * 3 * 365 * 100;
 }
 
+function formatQuote(bid: number | undefined, ask: number | undefined) {
+  if (bid === undefined || ask === undefined) {
+    return "-- / --";
+  }
+  return `${bid.toFixed(4)} / ${ask.toFixed(4)}`;
+}
+
+function formatMid(value: number | undefined) {
+  if (value === undefined) {
+    return "--";
+  }
+  return value.toFixed(4);
+}
+
+function formatBps(value: number | undefined) {
+  if (value === undefined) {
+    return "--";
+  }
+  return `${value.toFixed(2)} bps`;
+}
+
+function formatCombinedBps(left: number | undefined, right: number | undefined) {
+  if (left === undefined || right === undefined) {
+    return "--";
+  }
+  return `${(left + right).toFixed(2)} bps`;
+}
+
 function normalizeRiskLevel(riskTag: string): Exclude<RiskFilter, "all"> {
   if (riskTag.includes("critical") || riskTag.includes("high") || riskTag.includes("halt")) {
     return "high";
@@ -104,6 +132,28 @@ export function OpportunityScanPage() {
   const detailSymbol = formatSymbol(detailRow?.symbol ?? "BTCUSDT");
   const detailAnnualized = detailRow ? annualizedYield(detailRow.funding_rate) : 12.42;
   const detailDailyCarry = detailRow ? ((detailRow.funding_rate * 3 * 10_000) / 100).toFixed(2) : "12.20";
+  const marketMetrics = [
+    {
+      label: "现货买一 / 卖一",
+      value: formatQuote(detailRow?.spot_bid, detailRow?.spot_ask),
+      hint: `Mid ${formatMid(detailRow?.spot_mid)}`,
+    },
+    {
+      label: "永续买一 / 卖一",
+      value: formatQuote(detailRow?.perp_bid, detailRow?.perp_ask),
+      hint: `Mid ${formatMid(detailRow?.perp_mid)}`,
+    },
+    {
+      label: "基差 (Basis)",
+      value: formatBps(detailRow?.basis_bps),
+      hint: "现货/永续偏移",
+    },
+    {
+      label: "双腿点差成本",
+      value: formatCombinedBps(detailRow?.spot_spread_bps, detailRow?.perp_spread_bps),
+      hint: "Spot + Perp",
+    },
+  ];
   const riskMetrics = [
     {
       label: "流动性系数",
@@ -315,6 +365,20 @@ export function OpportunityScanPage() {
                     ? `${formatSymbol(detailRow.symbol)} 当前风险标签为 ${detailRow.risk_tag}，建议仅在滑点窗口稳定后执行。`
                     : "当前没有命中高质量机会，维持观察模式并等待下一轮扫描。"}
                 </p>
+              </div>
+            </div>
+
+            <div className="scanner-risk-grid">
+              <h4>行情快照</h4>
+              <div className="scanner-risk-grid__items">
+                {marketMetrics.map((metric) => (
+                  <div className="scanner-risk-card" key={metric.label}>
+                    <span>{metric.label}</span>
+                    <strong>
+                      {metric.value} <em>{metric.hint}</em>
+                    </strong>
+                  </div>
+                ))}
               </div>
             </div>
 

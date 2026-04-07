@@ -52,4 +52,5 @@ export const apiClient = {
   getExecutionSummary: <T>(params?: ExecutionSummaryParams) => apiGet<T>("/api/v1/algo/execution/summary", params),
   getReconciliationCandidates: <T>(params?: ReconciliationCandidatesParams) =>
     apiGet<T>("/api/v1/algo/reconciliation/candidates", params),
+  getReconciliationWorker: <T>() => apiGet<T>("/api/v1/algo/reconciliation/worker"),
 };

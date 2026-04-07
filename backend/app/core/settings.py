@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     live_execution_enabled: bool = False
     live_symbol_allowlist: str = "BTCUSDT,ETHUSDT,SOLUSDT"
     max_live_notional: float = 25000
+    reconciliation_worker_enabled: bool = False
+    reconciliation_worker_interval_seconds: float = 30.0
+    reconciliation_worker_limit: int = 5
     scan_limit: int = 25
     storage_backend: Literal["json", "mysql"] = "json"
     mysql_host: str = "127.0.0.1"

@@ -4,6 +4,21 @@ export type OpportunityScore = {
   net_edge_bps: number;
   score: number;
   risk_tag: string;
+  perp_bid: number;
+  perp_ask: number;
+  spot_bid: number;
+  spot_ask: number;
+  perp_mid: number;
+  spot_mid: number;
+  perp_spread_bps: number;
+  spot_spread_bps: number;
+  gross_edge_bps: number;
+  trading_cost_bps: number;
+  annualized_funding_rate_pct: number;
+  basis_bps: number;
+  projected_net_edge_bps: number;
+  payback_periods: number;
+  expected_hold_periods: number;
 };
 
 export type AccountHealthSummary = {
@@ -112,6 +127,23 @@ export type ReconciliationCandidateListResponse = {
   candidates: ReconciliationCandidate[];
 };
 
+export type ReconciliationWorkerStatus = {
+  enabled: boolean;
+  configured: boolean;
+  running: boolean;
+  interval_seconds: number;
+  limit: number;
+  total_runs: number;
+  total_failed_runs: number;
+  total_imported_reports: number;
+  last_imported_report_count: number;
+  last_synced_trade_count: number;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+};
+
 export type ExecutionStatusCount = {
   status: string;
   count: number;
@@ -145,22 +177,4 @@ export type ExecutionSummaryResponse = {
   status_counts: ExecutionStatusCount[];
   recovery_queue: ExecutionRecoveryQueueItem[];
   recent_incidents: ExecutionIncident[];
-};
-
-export type ReconciliationCandidate = {
-  trade_id: string;
-  symbol: string;
-  local_status: string;
-  expected_order_ids: string[];
-  reported_order_ids: string[];
-  missing_order_ids: string[];
-  exchange_statuses: string[];
-  latest_event_at: string | null;
-  latest_report_at: string | null;
-  suggested_action: string;
-  needs_attention: boolean;
-};
-
-export type ReconciliationCandidateListResponse = {
-  candidates: ReconciliationCandidate[];
 };

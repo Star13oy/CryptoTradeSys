@@ -58,6 +58,23 @@ class ReconciliationCandidateListResponse(BaseModel):
     candidates: list[ReconciliationCandidate] = Field(default_factory=list)
 
 
+class ReconciliationWorkerSnapshot(BaseModel):
+    enabled: bool = False
+    configured: bool = False
+    running: bool = False
+    interval_seconds: float = Field(default=30.0, ge=0.01)
+    limit: int = Field(default=5, ge=1)
+    total_runs: int = Field(default=0, ge=0)
+    total_failed_runs: int = Field(default=0, ge=0)
+    total_imported_reports: int = Field(default=0, ge=0)
+    last_imported_report_count: int = Field(default=0, ge=0)
+    last_synced_trade_count: int = Field(default=0, ge=0)
+    last_started_at: datetime | None = None
+    last_finished_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_error: str | None = None
+
+
 class ReconciliationIssue(BaseModel):
     trade_id: str
     symbol: str

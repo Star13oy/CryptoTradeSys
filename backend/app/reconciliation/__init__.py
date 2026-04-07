@@ -7,9 +7,11 @@ from .schemas import (
     ExchangeOrderReportListResponse,
     ReconciliationIssue,
     ReconciliationSummary,
+    ReconciliationWorkerSnapshot,
 )
 from .service import ReconciliationService
 from .store import ExchangeOrderReportStore
+from .worker import ReconciliationWorker
 
 __all__ = [
     "ExchangeOrderReport",
@@ -22,4 +24,6 @@ __all__ = [
     "ReconciliationIssue",
     "ReconciliationService",
     "ReconciliationSummary",
+    "ReconciliationWorker",
+    "ReconciliationWorkerSnapshot",
 ]
