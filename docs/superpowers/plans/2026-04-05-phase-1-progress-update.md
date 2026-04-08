@@ -31,6 +31,17 @@
 16. 已补上轻量级 in-process reconciliation worker，可按固定间隔自动同步 attention queue，并暴露 worker status / manual run API。
 17. 总览页与扫描页已补上原始行情细节层，可直接看到 `spot/perp bid-ask`、`mid`、`basis` 与双腿点差成本。
 18. 已补上 recovery planning 层，可把 `failed / recovery_pending` 交易转成 `resume_open / resume_close / manual_review` 计划，并只对安全可恢复的子集做批量自动恢复。
+19. 已补上轻量级 in-process `recovery worker`，可按固定间隔自动执行安全可恢复的计划，并暴露 worker status / manual run API。
+20. 已补上 live execution 熔断器，可在连续 live 异常后自动阻断新的 live 请求，自动冷却恢复，并暴露状态查询 / 手动复位 API。
+21. 已补上 live adapter “安全重试”能力：当下单链路异常时，先按既定 `clientOrderId` 回查交易所订单；仅在确认订单不存在时才做一次受控重试。
+22. 已补上 compensation planning 的安全执行入口：当前会对 `sync_exchange_reports` 与恢复类动作做受控执行，并把不在 allowlist 中的动作显式标记为 `skipped`，避免危险动作被静默自动化。
+23. 已补上 `rebalance_hedge` 的受控执行路径：当系统能从既有永续成交回报推导出参考价格时，会把建议的名义金额转换为永续数量，并复用执行编排器、账本、审计与 live 熔断保护来完成再平衡。
+24. 已补上轻量级 in-process `compensation worker`，可按固定间隔轮询补偿安全动作，并暴露 worker status / manual run API。
+25. `risk-center` 已接入对账候选与状态面板，能把待关注交易、缺失订单与建议动作直接展示出来。
+26. 已补上手动 hedge rebalance API：`POST /api/v1/algo/hedge/rebalance/{trade_id}`，用于对指定交易做受控再平衡。
+27. 已补上轻量级 in-process `hedge rebalance worker`，可按固定间隔扫描 `rebalance_required` 的仓位，并在能推导出安全数量时自动执行再平衡。
+28. `positions` 已接入 `hedge worker` 状态卡和手动触发入口；`risk-center` 已接入 reconciliation / recovery / compensation worker 与 live circuit breaker 的手动触发入口。
+29. 已补上单笔自动数量推导的再平衡执行入口：`POST /api/v1/algo/hedge/rebalance-auto/{trade_id}`；`positions` 页已接入“执行再平衡”按钮，且仅在建议动作确为 `increase/reduce perp hedge` 时才允许触发。
 
 ## What Is Implemented
 
@@ -118,6 +129,12 @@
 22. 风控中心页面已接上 `/api/v1/algo/reconciliation/candidates`，能直接展示待对账候选、缺失订单与建议动作。
 23. 已支持 `/api/v1/algo/reconciliation/worker` 与 `/api/v1/algo/reconciliation/worker/run`，便于查看后台同步状态并做受控手动触发。
 24. 已支持 `/api/v1/algo/recovery/plans` 与 `/api/v1/algo/recovery/execute-auto`，为后续 recovery worker / operator workflow 提供恢复计划与受控自动执行入口。
+25. 已支持 `/api/v1/algo/recovery/worker` 与 `/api/v1/algo/recovery/worker/run`，使恢复流程不再只能人工点一次接口，而能进入受控轮询形态。
+26. 已支持 `/api/v1/algo/execution/circuit-breaker` 与 `/api/v1/algo/execution/circuit-breaker/reset`，便于操作员查看 live 熔断状态并做受控复位。
+27. 已支持 live 下单的 query-before-retry 语义，降低链路抖动时的重复下单风险。
+28. 已支持 `/api/v1/algo/compensation/execute`，可返回逐笔补偿执行结果，为后续 worker 化与前端操作台接入提供稳定合同。
+29. 已支持 `/api/v1/algo/compensation/worker` 与 `/api/v1/algo/compensation/worker/run`，使补偿动作也能进入受控轮询形态。
+30. 已支持 `/api/v1/algo/hedge/rebalance-auto/{trade_id}`，允许操作员对当前选中的漂移仓位直接发起自动数量推导的一键再平衡，而无需手动估算永续数量。
 
 ## Real Progress Against The Original Design
 
@@ -139,11 +156,11 @@
 
 ### 仍然是主要缺口的模块
 
-1. `Execution Orchestrator` 在真实 live 交易所响应下的补偿、重试、成交回报对账与部分成交恢复
+1. `Execution Orchestrator` 在真实 live 交易所响应下的补偿、成交回报对账与部分成交恢复
 2. `Portfolio Hedge Manager` 的执行闭环与自动再平衡动作
 3. 持仓与执行状态机在共享 ledger 上的进一步细化
 4. 更完整的历史数据仓库与自动采集
-5. live risk / rebalance / recovery 进程
+5. live risk / rebalance 进程，以及比当前基础熔断器更完整的 supervisor / circuit-breaker policy
 6. 自适应建议包的前端工作台联调
 7. 将当前 in-process reconciliation worker 与 recovery planner 进一步提升成更生产化的守护/监督模型，补上多进程安全、告警与持久化状态
 8. 更细的事务边界与 outbox/inbox 可靠投递
@@ -152,9 +169,15 @@
 
 ### Backend
 
-- Full backend suite: `91 passed, 6 skipped`
+- Full backend suite: `132 passed, 6 skipped`
 - Focused reconciliation-worker slice: `5 passed`
 - Focused recovery-planning slice: `5 passed`
+- Focused recovery-worker slice: `5 passed`
+- Focused execution-circuit-breaker slice: `20 passed`
+- Focused hedge-worker slice: `8 passed`
+- Focused execution-adapter safe-retry slice: `3 passed`
+- Focused compensation slice: `7 passed`
+- Focused compensation-worker slice: `5 passed`
 
 覆盖范围包括：
 
@@ -186,10 +209,15 @@
 26. reconciliation candidate read model / API
 27. authenticated reconciliation sync via Binance order query
 28. attention-queue reconciliation batch sync
+29. recovery worker
+30. live execution circuit breaker
+31. live adapter safe retry
+32. compensation safe execution API
+33. compensation worker
 
 ### Frontend
 
-- Full frontend suite: `18 passed`
+- Full frontend suite: `29 passed`
 - `npm run build`: passed
 
 ### Live scoring smoke result
@@ -207,12 +235,14 @@
 
 最推荐的下一段工作顺序：
 
-1. 用真实测试账户对 live adapter 做小额白名单联调，并补 exchange response reconciliation / retry / compensation。
+1. 用真实测试账户对 live adapter 做小额白名单联调，并补 exchange response reconciliation / compensation 剩余危险动作的闭环。
 2. 接入真实历史市场数据，并把已导入交易样本与当时市场上下文自动关联。
 3. 把 `adaptation/backtest/ledger/execution/hedge/reconciliation/recovery` 接到 `模型工作台 / 回测实验室 / 审计中心 / 持仓监控 / 风控中心`。
-4. 再往下推进真实交易所回报抓取、hedge loop、自动再平衡动作、recovery worker 与 live risk daemon。
-5. 把当前 in-process reconciliation worker 与 recovery planner 升级成更接近生产守护进程的部署形态。
+4. 再往下推进真实交易所回报抓取、更完整的 hedge loop，以及更强的 live risk daemon / circuit-breaker policy。
+5. 把当前 in-process reconciliation / recovery / compensation / hedge workers 升级成更接近生产守护进程的部署形态。
 6. 再补更严格的事务/补偿边界。
+7. 将 `flatten_*` 这类尚未放行的补偿动作，逐个升级为具备明确风控约束的自动化能力。
+8. 继续收敛 `compensation / hedge` workers 的 supervisor、告警与多实例安全边界。
 
 ## Practical Note
 

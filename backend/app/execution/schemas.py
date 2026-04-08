@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from app.audit import AuditEventRecord
 from app.ledger import TradeLedgerRecord
 
-ExecutionAction = Literal["open_hedge", "close_hedge"]
+ExecutionAction = Literal["open_hedge", "close_hedge", "rebalance_hedge"]
 RecoveryAction = Literal["resume_open", "resume_close"]
 
 

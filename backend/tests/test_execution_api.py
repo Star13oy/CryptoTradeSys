@@ -5,11 +5,17 @@ from fastapi.testclient import TestClient
 
 from app.api.routes.algo import (
     get_audit_event_service,
+    get_execution_circuit_breaker_service,
     get_execution_orchestrator,
     get_trade_ledger_service,
 )
 from app.audit import AuditEventService, AuditEventStore
-from app.execution import ExecutionIntentRequest, ExecutionLegReport, ExecutionOrchestrator
+from app.execution import (
+    ExecutionCircuitBreakerState,
+    ExecutionIntentRequest,
+    ExecutionLegReport,
+    ExecutionOrchestrator,
+)
 from app.ledger import TradeLedgerService, TradeLedgerStore
 from app.main import app
 
@@ -246,5 +252,56 @@ def test_execution_api_returns_summary_snapshot() -> None:
         assert counts["failed"] == 1
         assert payload["recovery_queue"][0]["trade_id"] == "api-summary-1"
         assert payload["recent_incidents"][0]["event_type"] == "execution.recovery.required"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_execution_circuit_breaker_api_returns_state() -> None:
+    class StubCircuitBreaker:
+        def get_state(self, *, now=None) -> ExecutionCircuitBreakerState:
+            return ExecutionCircuitBreakerState(
+                enabled=True,
+                is_open=True,
+                failure_threshold=2,
+                cooldown_seconds=300,
+                consecutive_failures=2,
+                last_reason="perp leg failed",
+            )
+
+    app.dependency_overrides[get_execution_circuit_breaker_service] = lambda: StubCircuitBreaker()
+    client = TestClient(app)
+
+    try:
+        response = client.get("/api/v1/algo/execution/circuit-breaker")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["enabled"] is True
+        assert payload["is_open"] is True
+        assert payload["consecutive_failures"] == 2
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_execution_circuit_breaker_api_supports_manual_reset() -> None:
+    class StubCircuitBreaker:
+        def manual_reset(self, *, occurred_at=None, reason="manual reset") -> ExecutionCircuitBreakerState:
+            return ExecutionCircuitBreakerState(
+                enabled=True,
+                is_open=False,
+                failure_threshold=2,
+                cooldown_seconds=300,
+                consecutive_failures=0,
+                last_reason=None,
+            )
+
+    app.dependency_overrides[get_execution_circuit_breaker_service] = lambda: StubCircuitBreaker()
+    client = TestClient(app)
+
+    try:
+        response = client.post("/api/v1/algo/execution/circuit-breaker/reset")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["is_open"] is False
+        assert payload["consecutive_failures"] == 0
     finally:
         app.dependency_overrides.clear()

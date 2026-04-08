@@ -1,8 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
-import type { HedgeOverviewItem, HedgeOverviewResponse, HedgeRebalancePlan } from "../../shared/contracts/console";
+import type {
+  HedgeOverviewItem,
+  HedgeOverviewResponse,
+  HedgeRebalancePlan,
+  HedgeRebalanceWorkerStatus,
+} from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
 const timeFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -85,6 +90,23 @@ function buildExitConditions(selectedRow: HedgeOverviewItem | null, rebalancePla
   ];
 }
 
+function buildHedgeWorkerState(worker: HedgeRebalanceWorkerStatus | undefined) {
+  if (!worker) {
+    return "SYNCING";
+  }
+  if (!worker.enabled) {
+    return "DISABLED";
+  }
+  if (!worker.configured) {
+    return "MISCONFIGURED";
+  }
+  return worker.running ? "RUNNING" : "IDLE";
+}
+
+function canManuallyRebalance(action: HedgeRebalancePlan["recommended_action"] | undefined) {
+  return action === "increase_perp_hedge" || action === "reduce_perp_hedge";
+}
+
 export function PositionMonitorPage() {
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
 
@@ -111,6 +133,27 @@ export function PositionMonitorPage() {
     queryFn: () => apiClient.getHedgeRebalancePlan<HedgeRebalancePlan>(selectedTradeId as string, { exposure_limit_bps: 50 }),
     enabled: selectedTradeId !== null,
   });
+  const hedgeWorkerQuery = useQuery({
+    queryKey: ["hedge-rebalance-worker"],
+    queryFn: () => apiClient.getHedgeRebalanceWorker<HedgeRebalanceWorkerStatus>(),
+  });
+  const hedgeWorkerRunMutation = useMutation({
+    mutationFn: () => apiClient.runHedgeRebalanceWorker<HedgeRebalanceWorkerStatus>(),
+    onSuccess: async () => {
+      await Promise.all([hedgeWorkerQuery.refetch(), overviewQuery.refetch(), rebalancePlanQuery.refetch()]);
+    },
+  });
+  const manualRebalanceMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedRow) {
+        throw new Error("No selected trade");
+      }
+      return apiClient.runHedgeRebalanceAuto(selectedRow.trade_id);
+    },
+    onSuccess: async () => {
+      await Promise.all([overviewQuery.refetch(), rebalancePlanQuery.refetch()]);
+    },
+  });
 
   const summaryCards = useMemo(() => {
     const totalNotional = rows.reduce((sum, row) => sum + Math.max(row.spot_notional, row.perp_notional), 0);
@@ -124,6 +167,9 @@ export function PositionMonitorPage() {
   }, [overviewQuery.data, rows]);
 
   const exitConditions = buildExitConditions(selectedRow, rebalancePlanQuery.data);
+  const hedgeWorker = hedgeWorkerQuery.data;
+  const hedgeWorkerState = buildHedgeWorkerState(hedgeWorker);
+  const manualRebalanceEnabled = canManuallyRebalance(rebalancePlanQuery.data?.recommended_action) && selectedRow !== null;
   const footerContent = (
     <>
       <span>ACTIVE HEDGES / {overviewQuery.data?.active_trade_count ?? 0} 组</span>
@@ -132,6 +178,7 @@ export function PositionMonitorPage() {
           ? `最近更新 ${timeFormatter.format(new Date(overviewQuery.data.generated_at))}`
           : "等待持仓摘要同步"}
       </span>
+      <span>{hedgeWorkerQuery.isError ? "HEDGE WORKER OFFLINE" : `HEDGE ${hedgeWorkerState}`}</span>
       <span>REBALANCE LIMIT / 50 bps</span>
     </>
   );
@@ -250,8 +297,70 @@ export function PositionMonitorPage() {
                 <button className="proto-button proto-button--ghost" type="button">
                   暂停
                 </button>
+                <button
+                  className="proto-button proto-button--accent"
+                  type="button"
+                  onClick={() => manualRebalanceMutation.mutate()}
+                  disabled={!manualRebalanceEnabled || manualRebalanceMutation.isPending}
+                >
+                  {manualRebalanceMutation.isPending ? "执行中..." : "执行再平衡"}
+                </button>
                 <button className="proto-button proto-button--danger" type="button">
                   立即强平 (Panic Sell)
+                </button>
+              </div>
+            </article>
+
+            <article className="proto-panel">
+              <div className="proto-panel__header">
+                <div>
+                  <p className="proto-panel__eyebrow">Auto Hedge Rebalance</p>
+                  <h3>Auto Hedge Rebalance</h3>
+                </div>
+              </div>
+
+              <div className="proto-risk-badge">{hedgeWorkerState}</div>
+              <span className="proto-meta">
+                {hedgeWorker ? `累计执行 ${hedgeWorker.total_executed_rebalances} 次` : "等待 hedge worker 状态同步"}
+              </span>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近尝试</span>
+                  <strong>{hedgeWorker ? `${hedgeWorker.last_attempted_count} 条` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className="proto-progress__fill"
+                    style={{ width: `${Math.min(100, (hedgeWorker?.last_attempted_count ?? 0) * 26)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近执行</span>
+                  <strong>{hedgeWorker ? `${hedgeWorker.last_executed_count} 条` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className={`proto-progress__fill${
+                      (hedgeWorker?.total_failed_runs ?? 0) > 0 ? " proto-progress__fill--warning" : ""
+                    }`}
+                    style={{ width: `${Math.min(100, (hedgeWorker?.last_executed_count ?? 0) * 26)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="proto-action-grid proto-action-grid--two">
+                <button className="proto-button proto-button--ghost" type="button">
+                  间隔 {hedgeWorker?.interval_seconds ?? 30}s
+                </button>
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => hedgeWorkerRunMutation.mutate()}
+                  disabled={hedgeWorkerRunMutation.isPending}
+                >
+                  {hedgeWorkerRunMutation.isPending ? "运行中..." : "运行再平衡"}
                 </button>
               </div>
             </article>

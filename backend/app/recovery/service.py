@@ -72,8 +72,11 @@ class RecoveryService:
         orchestrator: ExecutionOrchestrator,
         limit: int | None = None,
         symbol: str | None = None,
+        trade_ids: set[str] | None = None,
     ) -> RecoveryExecutionSummary:
         plans = self.list_plans(symbol=symbol, only_actionable=True)
+        if trade_ids is not None:
+            plans = [plan for plan in plans if plan.trade_id in trade_ids]
         if limit is not None:
             plans = plans[:limit]
 

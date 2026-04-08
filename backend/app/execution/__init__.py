@@ -1,4 +1,5 @@
 from .adapters import BinanceLiveExecutionAdapter
+from .circuit_breaker import ExecutionCircuitBreakerService, ExecutionCircuitBreakerState
 from .schemas import (
     ExecutionConsoleSnapshot,
     ExecutionIncident,
@@ -14,6 +15,8 @@ from .service import ExecutionOrchestrator
 
 __all__ = [
     "BinanceLiveExecutionAdapter",
+    "ExecutionCircuitBreakerService",
+    "ExecutionCircuitBreakerState",
     "ExecutionConsoleSnapshot",
     "ExecutionIncident",
     "ExecutionIntentRequest",

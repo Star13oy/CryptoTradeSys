@@ -4,9 +4,18 @@ from collections import Counter
 from datetime import datetime, timezone
 
 from app.audit import AuditEventRecord, AuditEventService
+from app.execution import ExecutionOrchestrator
 from app.ledger import TradeLedgerRecord, TradeLedgerService
+from app.reconciliation import ExchangeOrderReportStore
 
-from .schemas import HedgeHealth, HedgeOverview, HedgeOverviewItem, HedgeRebalancePlan
+from .schemas import (
+    HedgeHealth,
+    HedgeOverview,
+    HedgeOverviewItem,
+    HedgeRebalanceExecutionItem,
+    HedgeRebalanceExecutionSummary,
+    HedgeRebalancePlan,
+)
 
 ACTIVE_STATUSES = {"candidate", "open", "hedged", "closing", "failed", "recovery_pending"}
 RECOVERY_STATUSES = {"failed", "recovery_pending"}
@@ -24,9 +33,11 @@ class HedgeManagerService:
         self,
         ledger_service: TradeLedgerService | None = None,
         audit_service: AuditEventService | None = None,
+        report_store: ExchangeOrderReportStore | None = None,
     ) -> None:
         self._ledger_service = ledger_service or TradeLedgerService()
         self._audit_service = audit_service or AuditEventService()
+        self._report_store = report_store or ExchangeOrderReportStore()
 
     def overview(self, *, exposure_limit_bps: float = 50.0) -> HedgeOverview:
         records = [
@@ -124,6 +135,144 @@ class HedgeManagerService:
             notes="Exposure is within configured tolerance.",
         )
 
+    def execute_auto_rebalance_actions(
+        self,
+        *,
+        orchestrator: ExecutionOrchestrator | object,
+        symbol: str | None = None,
+        limit: int | None = None,
+        exposure_limit_bps: float = 50.0,
+    ) -> HedgeRebalanceExecutionSummary:
+        candidate_plans = [
+            self.build_rebalance_plan(record.trade_id, exposure_limit_bps=exposure_limit_bps)
+            for record in self._ledger_service.list_records(symbol=symbol)
+            if record.status in ACTIVE_STATUSES
+        ]
+        candidate_plans = [
+            plan
+            for plan in candidate_plans
+            if plan.recommended_action in {"increase_perp_hedge", "reduce_perp_hedge"}
+        ]
+        candidate_plans.sort(key=lambda item: (item.exposure_bps, item.trade_id), reverse=True)
+        if limit is not None:
+            candidate_plans = candidate_plans[:limit]
+
+        results: list[HedgeRebalanceExecutionItem] = []
+        for plan in candidate_plans:
+            perp_notional_delta = plan.suggested_perp_notional_delta
+            if perp_notional_delta == 0:
+                results.append(
+                    HedgeRebalanceExecutionItem(
+                        trade_id=plan.trade_id,
+                        symbol=plan.symbol,
+                        action=plan.recommended_action,
+                        outcome="skipped",
+                        reason="missing suggested_perp_notional_delta for rebalance action",
+                        details={},
+                    )
+                )
+                continue
+            reference_price = self._infer_latest_perp_reference_price(plan.trade_id)
+            if reference_price is None or reference_price <= 0:
+                results.append(
+                    HedgeRebalanceExecutionItem(
+                        trade_id=plan.trade_id,
+                        symbol=plan.symbol,
+                        action=plan.recommended_action,
+                        outcome="skipped",
+                        reason="cannot infer perp reference price for rebalance action",
+                        details={},
+                    )
+                )
+                continue
+            perp_quantity = round(abs(perp_notional_delta) / reference_price, 6)
+            if perp_quantity <= 0:
+                results.append(
+                    HedgeRebalanceExecutionItem(
+                        trade_id=plan.trade_id,
+                        symbol=plan.symbol,
+                        action=plan.recommended_action,
+                        outcome="skipped",
+                        reason="calculated perp quantity is zero",
+                        details={"reference_price": reference_price},
+                    )
+                )
+                continue
+            try:
+                orchestrator.rebalance_hedge(
+                    trade_id=plan.trade_id,
+                    perp_notional_delta=perp_notional_delta,
+                    perp_quantity=perp_quantity,
+                    notes="auto hedge rebalance",
+                )
+            except Exception as exc:
+                results.append(
+                    HedgeRebalanceExecutionItem(
+                        trade_id=plan.trade_id,
+                        symbol=plan.symbol,
+                        action=plan.recommended_action,
+                        outcome="failed",
+                        reason=str(exc),
+                        details={
+                            "reference_price": reference_price,
+                            "perp_quantity": perp_quantity,
+                        },
+                    )
+                )
+                continue
+            results.append(
+                HedgeRebalanceExecutionItem(
+                    trade_id=plan.trade_id,
+                    symbol=plan.symbol,
+                    action=plan.recommended_action,
+                    outcome="executed",
+                    reason="executed hedge rebalance",
+                    details={
+                        "reference_price": reference_price,
+                        "perp_quantity": perp_quantity,
+                    },
+                )
+            )
+
+        return HedgeRebalanceExecutionSummary(
+            generated_at=datetime.now(timezone.utc),
+            attempted_count=len(candidate_plans),
+            executed_count=sum(1 for item in results if item.outcome == "executed"),
+            skipped_count=sum(1 for item in results if item.outcome == "skipped"),
+            failed_count=sum(1 for item in results if item.outcome == "failed"),
+            results=results,
+        )
+
+    def execute_rebalance_plan(
+        self,
+        trade_id: str,
+        *,
+        orchestrator: ExecutionOrchestrator | object,
+        exposure_limit_bps: float = 50.0,
+        notes: str | None = None,
+    ):
+        plan = self.build_rebalance_plan(trade_id, exposure_limit_bps=exposure_limit_bps)
+        if (
+            plan.recommended_action not in {"increase_perp_hedge", "reduce_perp_hedge"}
+            or plan.suggested_perp_notional_delta == 0
+        ):
+            raise ValueError(f"trade '{trade_id}' does not currently require hedge rebalance")
+
+        reference_price = self._infer_latest_perp_reference_price(trade_id)
+        if reference_price is None or reference_price <= 0:
+            raise ValueError(f"trade '{trade_id}' cannot infer perp reference price for hedge rebalance")
+
+        perp_quantity = round(abs(plan.suggested_perp_notional_delta) / reference_price, 6)
+        if perp_quantity <= 0:
+            raise ValueError(f"trade '{trade_id}' calculated perp quantity is zero")
+
+        return orchestrator.rebalance_hedge(
+            trade_id=trade_id,
+            perp_notional_delta=plan.suggested_perp_notional_delta,
+            perp_quantity=perp_quantity,
+            notes=notes,
+        )
+
     def _build_item(
         self,
         record: TradeLedgerRecord,
@@ -174,3 +323,17 @@ class HedgeManagerService:
             if isinstance(trade_id, str):
                 latest_by_trade[trade_id] = event
         return latest_by_trade
+
+    def _infer_latest_perp_reference_price(self, trade_id: str) -> float | None:
+        reports = [
+            report
+            for report in self._report_store.list()
+            if report.trade_id == trade_id
+            and report.leg == "perp"
+            and report.executed_qty > 0
+            and report.cum_quote_qty > 0
+        ]
+        if not reports:
+            return None
+        latest = max(reports, key=lambda report: (report.updated_at, report.report_id))
+        return latest.cum_quote_qty / latest.executed_qty

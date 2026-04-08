@@ -40,3 +40,21 @@ class RecoveryExecutionSummary(BaseModel):
     skipped_count: int = Field(default=0, ge=0)
     results: list[ExecutionResult] = Field(default_factory=list)
     skipped: list[RecoveryExecutionSkip] = Field(default_factory=list)
+
+
+class RecoveryWorkerSnapshot(BaseModel):
+    enabled: bool = False
+    configured: bool = False
+    running: bool = False
+    interval_seconds: float = Field(default=30.0, gt=0.0)
+    limit: int = Field(default=3, ge=1)
+    total_runs: int = Field(default=0, ge=0)
+    total_failed_runs: int = Field(default=0, ge=0)
+    total_executed_recoveries: int = Field(default=0, ge=0)
+    last_attempted_count: int = Field(default=0, ge=0)
+    last_executed_count: int = Field(default=0, ge=0)
+    last_skipped_count: int = Field(default=0, ge=0)
+    last_started_at: datetime | None = None
+    last_finished_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_error: str | None = None

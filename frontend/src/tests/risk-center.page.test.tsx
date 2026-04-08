@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { RiskCenterPage } from "../pages/risk-center/page";
 import { renderWithProviders } from "./render-with-providers";
@@ -6,6 +6,29 @@ import { renderWithProviders } from "./render-with-providers";
 test("risk center page loads execution summary", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url === "/api/v1/algo/compensation/worker/run") {
+      return {
+        ok: true,
+        json: async () => ({
+          enabled: true,
+          configured: true,
+          running: true,
+          interval_seconds: 45,
+          limit: 2,
+          exposure_limit_bps: 35,
+          total_runs: 4,
+          total_failed_runs: 0,
+          total_executed_actions: 3,
+          last_attempted_count: 1,
+          last_executed_count: 1,
+          last_skipped_count: 0,
+          last_failed_count: 0,
+          last_success_at: "2026-04-05T11:30:00Z",
+          last_error: null,
+        }),
+      } as Response;
+    }
+
     if (url === "/api/v1/algo/reconciliation/worker") {
       return {
         ok: true,
@@ -26,6 +49,69 @@ test("risk center page loads execution summary", async () => {
       } as Response;
     }
 
+    if (url === "/api/v1/algo/execution/circuit-breaker") {
+      return {
+        ok: true,
+        json: async () => ({
+          enabled: true,
+          is_open: true,
+          failure_threshold: 2,
+          cooldown_seconds: 300,
+          consecutive_failures: 2,
+          last_failure_at: "2026-04-05T11:25:00Z",
+          opened_at: "2026-04-05T11:25:00Z",
+          resume_at: "2026-04-05T11:30:00Z",
+          last_reason: "live perp leg failed",
+          last_trade_id: "recover-1",
+          updated_at: "2026-04-05T11:25:00Z",
+        }),
+      } as Response;
+    }
+
+    if (url === "/api/v1/algo/recovery/worker") {
+      return {
+        ok: true,
+        json: async () => ({
+          enabled: true,
+          configured: true,
+          running: false,
+          interval_seconds: 30,
+          limit: 3,
+          total_runs: 7,
+          total_failed_runs: 1,
+          total_executed_recoveries: 4,
+          last_attempted_count: 1,
+          last_executed_count: 1,
+          last_skipped_count: 0,
+          last_success_at: "2026-04-05T11:28:00Z",
+          last_error: null,
+        }),
+      } as Response;
+    }
+
+    if (url === "/api/v1/algo/compensation/worker") {
+      return {
+        ok: true,
+        json: async () => ({
+          enabled: true,
+          configured: true,
+          running: false,
+          interval_seconds: 45,
+          limit: 2,
+          exposure_limit_bps: 35,
+          total_runs: 3,
+          total_failed_runs: 0,
+          total_executed_actions: 2,
+          last_attempted_count: 1,
+          last_executed_count: 1,
+          last_skipped_count: 0,
+          last_failed_count: 0,
+          last_success_at: "2026-04-05T11:29:00Z",
+          last_error: null,
+        }),
+      } as Response;
+    }
+
     if (url.startsWith("/api/v1/algo/reconciliation/candidates")) {
       return {
         ok: true,
@@ -37,6 +123,27 @@ test("risk center page loads execution summary", async () => {
               missing_order_ids: ["spot-1", "perp-2"],
               suggested_action: "inspect_exchange",
               needs_attention: true,
+            },
+          ],
+        }),
+      } as Response;
+    }
+
+    if (url.startsWith("/api/v1/algo/compensation/plans")) {
+      return {
+        ok: true,
+        json: async () => ({
+          plans: [
+            {
+              trade_id: "comp-1",
+              symbol: "BTCUSDT",
+              mode: "live",
+              local_status: "hedged",
+              recommended_action: "sync_exchange_reports",
+              priority: "critical",
+              actionable: true,
+              reason: "missing exchange reports",
+              details: { missing_order_ids: ["perp-1"] },
             },
           ],
         }),
@@ -103,15 +210,37 @@ test("risk center page loads execution summary", async () => {
   await waitFor(() => expect(screen.getByText("GUARDED")).toBeTruthy());
   expect(screen.getByText("Recovery required")).toBeTruthy();
   expect(screen.getByText("execution.recovery.required")).toBeTruthy();
+  expect(screen.getAllByText("Live Execution Circuit Breaker").length).toBeGreaterThan(0);
+  expect(screen.getByText("OPEN")).toBeTruthy();
+  expect(screen.getAllByText("Recovery Worker").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("IDLE").length).toBeGreaterThan(0);
   await waitFor(() => expect(screen.getByText("recon-1")).toBeTruthy());
-  expect(screen.getByText("BTCUSDT")).toBeTruthy();
+  expect(screen.getAllByText("BTCUSDT").length).toBeGreaterThan(0);
   expect(screen.getByText("spot-1, perp-2")).toBeTruthy();
   expect(screen.getByText("inspect_exchange")).toBeTruthy();
   expect(screen.getByText("是")).toBeTruthy();
+  expect(screen.getByText("执行补偿计划")).toBeTruthy();
+  expect(screen.getByText("comp-1")).toBeTruthy();
+  expect(screen.getByText("sync_exchange_reports")).toBeTruthy();
+  expect(screen.getByText("critical")).toBeTruthy();
+  expect(screen.getByText("missing exchange reports")).toBeTruthy();
   expect(screen.getByText("自动对账 Worker")).toBeTruthy();
   expect(screen.getByText("RUNNING")).toBeTruthy();
   expect(screen.getByText("累计同步 8 条回报")).toBeTruthy();
+  expect(screen.getAllByText("Compensation Worker").length).toBeGreaterThan(0);
+  expect(screen.getByText(/累计执行 2 个动作/)).toBeTruthy();
+  expect(screen.getByText(/连续失败 2/)).toBeTruthy();
+  expect(screen.getByText(/累计恢复 4 笔/)).toBeTruthy();
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=6");
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates");
   expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/worker");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/circuit-breaker");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/recovery/worker");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/plans?only_actionable=true&exposure_limit_bps=50");
+
+  fireEvent.click(screen.getByText("运行补偿"));
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker/run", { method: "POST" })
+  );
 });

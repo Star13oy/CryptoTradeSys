@@ -107,6 +107,31 @@ export type HedgeRebalancePlan = {
   notes: string;
 };
 
+export type HedgeRebalanceAutoResponse = {
+  trade_id: string;
+  executed: boolean;
+};
+
+export type HedgeRebalanceWorkerStatus = {
+  enabled: boolean;
+  configured: boolean;
+  running: boolean;
+  interval_seconds: number;
+  limit: number;
+  exposure_limit_bps: number;
+  total_runs: number;
+  total_failed_runs: number;
+  total_executed_rebalances: number;
+  last_attempted_count: number;
+  last_executed_count: number;
+  last_skipped_count: number;
+  last_failed_count: number;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+};
+
 export type ReconciliationSuggestedAction = "none" | "inspect_exchange" | "resume_open" | "resume_close";
 
 export type ReconciliationCandidate = {
@@ -138,6 +163,87 @@ export type ReconciliationWorkerStatus = {
   total_imported_reports: number;
   last_imported_report_count: number;
   last_synced_trade_count: number;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+};
+
+export type RecoveryWorkerStatus = {
+  enabled: boolean;
+  configured: boolean;
+  running: boolean;
+  interval_seconds: number;
+  limit: number;
+  total_runs: number;
+  total_failed_runs: number;
+  total_executed_recoveries: number;
+  last_attempted_count: number;
+  last_executed_count: number;
+  last_skipped_count: number;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+};
+
+export type ExecutionCircuitBreakerStatus = {
+  enabled: boolean;
+  is_open: boolean;
+  failure_threshold: number;
+  cooldown_seconds: number;
+  consecutive_failures: number;
+  last_failure_at: string | null;
+  opened_at: string | null;
+  resume_at: string | null;
+  last_reason: string | null;
+  last_trade_id: string | null;
+  updated_at: string;
+};
+
+export type CompensationAction =
+  | "none"
+  | "sync_exchange_reports"
+  | "resume_open"
+  | "resume_close"
+  | "rebalance_hedge"
+  | "manual_review"
+  | "flatten_spot"
+  | "flatten_perp";
+
+export type CompensationPriority = "low" | "medium" | "high" | "critical";
+
+export type CompensationPlan = {
+  trade_id: string;
+  symbol: string;
+  mode: "paper" | "live";
+  local_status: string;
+  recommended_action: CompensationAction;
+  priority: CompensationPriority;
+  actionable: boolean;
+  reason: string;
+  details: Record<string, unknown>;
+};
+
+export type CompensationPlanListResponse = {
+  generated_at: string;
+  plans: CompensationPlan[];
+};
+
+export type CompensationWorkerStatus = {
+  enabled: boolean;
+  configured: boolean;
+  running: boolean;
+  interval_seconds: number;
+  limit: number;
+  exposure_limit_bps: number;
+  total_runs: number;
+  total_failed_runs: number;
+  total_executed_actions: number;
+  last_attempted_count: number;
+  last_executed_count: number;
+  last_skipped_count: number;
+  last_failed_count: number;
   last_started_at: string | null;
   last_finished_at: string | null;
   last_success_at: string | null;

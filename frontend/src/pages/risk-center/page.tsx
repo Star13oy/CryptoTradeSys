@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../../shared/api/client";
 import type {
+  CompensationPlanListResponse,
+  CompensationWorkerStatus,
+  ExecutionCircuitBreakerStatus,
   ExecutionSummaryResponse,
   ReconciliationCandidateListResponse,
   ReconciliationWorkerStatus,
+  RecoveryWorkerStatus,
 } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
@@ -51,6 +55,42 @@ function buildWorkerState(worker: ReconciliationWorkerStatus | undefined) {
   return "IDLE";
 }
 
+function buildCircuitBreakerState(breaker: ExecutionCircuitBreakerStatus | undefined) {
+  if (!breaker) {
+    return "SYNCING";
+  }
+  if (!breaker.enabled) {
+    return "DISABLED";
+  }
+  return breaker.is_open ? "OPEN" : "CLOSED";
+}
+
+function buildRecoveryWorkerState(worker: RecoveryWorkerStatus | undefined) {
+  if (!worker) {
+    return "SYNCING";
+  }
+  if (!worker.enabled) {
+    return "DISABLED";
+  }
+  if (!worker.configured) {
+    return "MISCONFIGURED";
+  }
+  return worker.running ? "RUNNING" : "IDLE";
+}
+
+function buildCompensationWorkerState(worker: CompensationWorkerStatus | undefined) {
+  if (!worker) {
+    return "SYNCING";
+  }
+  if (!worker.enabled) {
+    return "DISABLED";
+  }
+  if (!worker.configured) {
+    return "MISCONFIGURED";
+  }
+  return worker.running ? "RUNNING" : "IDLE";
+}
+
 export function RiskCenterPage() {
   const summaryQuery = useQuery({
     queryKey: ["execution-summary", 6],
@@ -64,10 +104,61 @@ export function RiskCenterPage() {
     queryKey: ["reconciliation-worker"],
     queryFn: () => apiClient.getReconciliationWorker<ReconciliationWorkerStatus>(),
   });
+  const circuitBreakerQuery = useQuery({
+    queryKey: ["execution-circuit-breaker"],
+    queryFn: () => apiClient.getExecutionCircuitBreaker<ExecutionCircuitBreakerStatus>(),
+  });
+  const recoveryWorkerQuery = useQuery({
+    queryKey: ["recovery-worker"],
+    queryFn: () => apiClient.getRecoveryWorker<RecoveryWorkerStatus>(),
+  });
+  const compensationQuery = useQuery({
+    queryKey: ["compensation-plans", true, 50],
+    queryFn: () =>
+      apiClient.getCompensationPlans<CompensationPlanListResponse>({
+        only_actionable: true,
+        exposure_limit_bps: 50,
+      }),
+  });
+  const compensationWorkerQuery = useQuery({
+    queryKey: ["compensation-worker"],
+    queryFn: () => apiClient.getCompensationWorker<CompensationWorkerStatus>(),
+  });
+  const reconciliationWorkerRunMutation = useMutation({
+    mutationFn: () => apiClient.runReconciliationWorker<ReconciliationWorkerStatus>(),
+    onSuccess: async () => {
+      await Promise.all([workerQuery.refetch(), candidatesQuery.refetch()]);
+    },
+  });
+  const recoveryWorkerRunMutation = useMutation({
+    mutationFn: () => apiClient.runRecoveryWorker<RecoveryWorkerStatus>(),
+    onSuccess: async () => {
+      await Promise.all([recoveryWorkerQuery.refetch(), summaryQuery.refetch()]);
+    },
+  });
+  const compensationWorkerRunMutation = useMutation({
+    mutationFn: () => apiClient.runCompensationWorker<CompensationWorkerStatus>(),
+    onSuccess: async () => {
+      await Promise.all([compensationWorkerQuery.refetch(), compensationQuery.refetch(), summaryQuery.refetch()]);
+    },
+  });
+  const circuitBreakerResetMutation = useMutation({
+    mutationFn: () => apiClient.resetExecutionCircuitBreaker<ExecutionCircuitBreakerStatus>(),
+    onSuccess: async () => {
+      await circuitBreakerQuery.refetch();
+    },
+  });
 
   const summary = summaryQuery.data;
   const worker = workerQuery.data;
   const workerState = buildWorkerState(worker);
+  const circuitBreaker = circuitBreakerQuery.data;
+  const circuitBreakerState = buildCircuitBreakerState(circuitBreaker);
+  const recoveryWorker = recoveryWorkerQuery.data;
+  const recoveryWorkerState = buildRecoveryWorkerState(recoveryWorker);
+  const compensationPlans = compensationQuery.data?.plans ?? [];
+  const compensationWorker = compensationWorkerQuery.data;
+  const compensationWorkerState = buildCompensationWorkerState(compensationWorker);
   const riskLevel = buildRiskLevel(summary);
   const anomalyCards = [
     {
@@ -141,6 +232,8 @@ export function RiskCenterPage() {
       <span>
         {candidatesQuery.data ? `对账候选 ${reconciliationCandidates.length} 笔` : "等待对账候选同步"}
       </span>
+      <span>{compensationQuery.data ? `补偿计划 ${compensationPlans.length} 条` : "等待补偿计划同步"}</span>
+      <span>{compensationWorkerQuery.isError ? "COMP WORKER OFFLINE" : `COMP ${compensationWorkerState}`}</span>
       <span>{workerQuery.isError ? "WORKER OFFLINE" : `WORKER ${workerState}`}</span>
     </>
   );
@@ -261,8 +354,167 @@ export function RiskCenterPage() {
                 <button className="proto-button proto-button--ghost" type="button">
                   间隔 {worker?.interval_seconds ?? 30}s
                 </button>
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => reconciliationWorkerRunMutation.mutate()}
+                  disabled={reconciliationWorkerRunMutation.isPending}
+                >
+                  {reconciliationWorkerRunMutation.isPending ? "运行中..." : "运行对账"}
+                </button>
+              </div>
+            </article>
+
+            <article className="proto-panel">
+              <p className="proto-panel__eyebrow">Live Circuit Breaker</p>
+              <h3>Live Execution Circuit Breaker</h3>
+              <div className={`proto-risk-badge${circuitBreaker?.is_open ? " proto-risk-badge--danger" : ""}`}>
+                {circuitBreakerState}
+              </div>
+              <span className="proto-meta">
+                {circuitBreaker
+                  ? `连续失败 ${circuitBreaker.consecutive_failures} / 阈值 ${circuitBreaker.failure_threshold}`
+                  : "等待熔断器状态同步"}
+              </span>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>冷却窗口</span>
+                  <strong>{circuitBreaker ? `${circuitBreaker.cooldown_seconds}s` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className={`proto-progress__fill${
+                      circuitBreaker?.is_open ? " proto-progress__fill--danger" : ""
+                    }`}
+                    style={{
+                      width: `${Math.min(100, ((circuitBreaker?.consecutive_failures ?? 0) / 2) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近失败原因</span>
+                  <strong>{circuitBreaker?.last_reason ?? "—"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className={`proto-progress__fill${
+                      circuitBreaker?.is_open ? " proto-progress__fill--warning" : ""
+                    }`}
+                    style={{ width: `${circuitBreaker?.is_open ? 100 : 18}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-action-grid proto-action-grid--two">
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => circuitBreakerResetMutation.mutate()}
+                  disabled={circuitBreakerResetMutation.isPending}
+                >
+                  {circuitBreakerResetMutation.isPending ? "复位中..." : "手动复位"}
+                </button>
                 <button className="proto-button proto-button--ghost" type="button">
-                  {worker?.last_error ? "存在错误" : "状态正常"}
+                  最近交易 {circuitBreaker?.last_trade_id ?? "--"}
+                </button>
+              </div>
+            </article>
+
+            <article className="proto-panel">
+              <p className="proto-panel__eyebrow">Recovery Worker</p>
+              <h3>Recovery Worker</h3>
+              <div className="proto-risk-badge">{recoveryWorkerState}</div>
+              <span className="proto-meta">
+                {recoveryWorker ? `累计恢复 ${recoveryWorker.total_executed_recoveries} 笔` : "等待 recovery worker 状态同步"}
+              </span>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近尝试</span>
+                  <strong>{recoveryWorker ? `${recoveryWorker.last_attempted_count} 笔` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className="proto-progress__fill"
+                    style={{ width: `${Math.min(100, (recoveryWorker?.last_attempted_count ?? 0) * 22)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近成功</span>
+                  <strong>{recoveryWorker ? `${recoveryWorker.last_executed_count} 笔` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className={`proto-progress__fill${
+                      (recoveryWorker?.total_failed_runs ?? 0) > 0 ? " proto-progress__fill--warning" : ""
+                    }`}
+                    style={{ width: `${Math.min(100, (recoveryWorker?.last_executed_count ?? 0) * 22)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-action-grid proto-action-grid--two">
+                <button className="proto-button proto-button--ghost" type="button">
+                  间隔 {recoveryWorker?.interval_seconds ?? 30}s
+                </button>
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => recoveryWorkerRunMutation.mutate()}
+                  disabled={recoveryWorkerRunMutation.isPending}
+                >
+                  {recoveryWorkerRunMutation.isPending ? "运行中..." : "运行恢复"}
+                </button>
+              </div>
+            </article>
+
+            <article className="proto-panel">
+              <p className="proto-panel__eyebrow">Compensation Worker</p>
+              <h3>Compensation Worker</h3>
+              <div className="proto-risk-badge">{compensationWorkerState}</div>
+              <span className="proto-meta">
+                {compensationWorker
+                  ? `累计执行 ${compensationWorker.total_executed_actions} 个动作`
+                  : "等待 compensation worker 状态同步"}
+              </span>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近尝试</span>
+                  <strong>{compensationWorker ? `${compensationWorker.last_attempted_count} 条` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className="proto-progress__fill"
+                    style={{ width: `${Math.min(100, (compensationWorker?.last_attempted_count ?? 0) * 26)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-meter">
+                <div className="proto-meter__row">
+                  <span>最近执行</span>
+                  <strong>{compensationWorker ? `${compensationWorker.last_executed_count} 条` : "--"}</strong>
+                </div>
+                <div className="proto-progress">
+                  <div
+                    className={`proto-progress__fill${
+                      (compensationWorker?.total_failed_runs ?? 0) > 0 ? " proto-progress__fill--warning" : ""
+                    }`}
+                    style={{ width: `${Math.min(100, (compensationWorker?.last_executed_count ?? 0) * 26)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="proto-action-grid proto-action-grid--two">
+                <button className="proto-button proto-button--ghost" type="button">
+                  暴露阈值 {compensationWorker?.exposure_limit_bps ?? 50}bps
+                </button>
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => compensationWorkerRunMutation.mutate()}
+                  disabled={compensationWorkerRunMutation.isPending}
+                >
+                  {compensationWorkerRunMutation.isPending ? "运行中..." : "运行补偿"}
                 </button>
               </div>
             </article>
@@ -281,6 +533,8 @@ export function RiskCenterPage() {
             {summaryQuery.isError ? <p className="panel-alert">执行风险摘要暂时不可用</p> : null}
             {candidatesQuery.isPending ? <p className="panel-state panel-state-subtle">正在同步对账候选项</p> : null}
             {candidatesQuery.isError ? <p className="panel-alert">对账候选项暂时不可用</p> : null}
+            {compensationQuery.isPending ? <p className="panel-state panel-state-subtle">正在同步补偿计划</p> : null}
+            {compensationQuery.isError ? <p className="panel-alert">补偿计划暂时不可用</p> : null}
 
             <div className="proto-threshold-grid">
               {thresholdRows.map((row) => (
@@ -333,6 +587,45 @@ export function RiskCenterPage() {
                   <span>{missingOrderIds}</span>
                   <span className="proto-pill">{suggestedAction}</span>
                   <span className={`proto-pill proto-text--${tone}`}>{needsAttention}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="proto-panel__header proto-panel__header--spaced">
+              <div>
+                <p className="proto-panel__eyebrow">Realtime Rules</p>
+                <h3>执行补偿计划</h3>
+              </div>
+              <span className="proto-chip proto-chip--active">建议动作</span>
+            </div>
+
+            <div className="proto-table-shell">
+              <div
+                className="proto-table-row proto-table-row--risk proto-table-row--head"
+                style={{ gridTemplateColumns: "1fr 0.8fr 1.1fr 0.8fr 1.4fr" }}
+              >
+                <span>交易 ID</span>
+                <span>交易对</span>
+                <span>建议动作</span>
+                <span>优先级</span>
+                <span>原因</span>
+              </div>
+              {!compensationQuery.isPending && !compensationQuery.isError && compensationPlans.length === 0 ? (
+                <div className="table-empty">暂无可执行补偿计划</div>
+              ) : null}
+              {compensationPlans.map((plan) => (
+                <div
+                  className="proto-table-row proto-table-row--risk"
+                  key={plan.trade_id}
+                  style={{ gridTemplateColumns: "1fr 0.8fr 1.1fr 0.8fr 1.4fr" }}
+                >
+                  <strong>{plan.trade_id}</strong>
+                  <span>{plan.symbol}</span>
+                  <span className="proto-pill">{plan.recommended_action}</span>
+                  <span className={`proto-pill proto-text--${plan.priority === "critical" ? "danger" : plan.priority === "high" ? "warning" : "accent"}`}>
+                    {plan.priority}
+                  </span>
+                  <span>{plan.reason}</span>
                 </div>
               ))}
             </div>

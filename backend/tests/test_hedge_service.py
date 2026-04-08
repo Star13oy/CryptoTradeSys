@@ -5,6 +5,7 @@ from uuid import uuid4
 from app.audit import AuditEventService, AuditEventStore
 from app.hedge import HedgeManagerService
 from app.ledger import TradeLedgerRecord, TradeLedgerService, TradeLedgerStore
+from app.reconciliation import ExchangeOrderReport, ExchangeOrderReportStore
 
 
 def make_path(suffix: str) -> Path:
@@ -120,3 +121,208 @@ def test_hedge_manager_service_builds_rebalance_plan() -> None:
     assert rebalance_plan.estimated_post_rebalance_exposure_bps == 0.0
     assert recovery_plan.recommended_action == "recover_trade"
     assert "recovery" in recovery_plan.notes.lower()
+
+
+def test_hedge_manager_service_executes_auto_rebalance_actions() -> None:
+    opened_at = datetime(2026, 4, 8, 18, 0, tzinfo=timezone.utc)
+    ledger_service = TradeLedgerService(TradeLedgerStore(make_path("hedge-exec-ledger")))
+    audit_service = AuditEventService(AuditEventStore(make_path("hedge-exec-audit")))
+    report_store = ExchangeOrderReportStore(make_path("hedge-exec-reports"))
+    ledger_service.import_records(
+        [
+            TradeLedgerRecord(
+                trade_id="hedge-exec-1",
+                mode="live",
+                strategy_id="funding-arb",
+                symbol="BTCUSDT",
+                status="hedged",
+                opened_at=opened_at,
+                net_exposure=120,
+                spot_notional=15000,
+                perp_notional=14880,
+            ),
+            TradeLedgerRecord(
+                trade_id="hedge-exec-2",
+                mode="live",
+                strategy_id="funding-arb",
+                symbol="ETHUSDT",
+                status="hedged",
+                opened_at=opened_at + timedelta(minutes=1),
+                net_exposure=80,
+                spot_notional=10000,
+                perp_notional=9920,
+            ),
+        ],
+        mode="replace",
+    )
+    report_store.save(
+        [
+            ExchangeOrderReport(
+                venue="binance",
+                order_id="perp-exec-1",
+                trade_id="hedge-exec-1",
+                symbol="BTCUSDT",
+                leg="perp",
+                status="FILLED",
+                executed_qty=2.0,
+                cum_quote_qty=150000.0,
+                updated_at=opened_at + timedelta(seconds=5),
+            )
+        ],
+        mode="replace",
+    )
+
+    class StubOrchestrator:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, float | str | None]] = []
+
+        def rebalance_hedge(self, *, trade_id: str, perp_notional_delta: float, perp_quantity: float, notes: str | None = None):
+            self.calls.append(
+                {
+                    "trade_id": trade_id,
+                    "perp_notional_delta": perp_notional_delta,
+                    "perp_quantity": perp_quantity,
+                    "notes": notes,
+                }
+            )
+            return None
+
+    orchestrator = StubOrchestrator()
+    summary = HedgeManagerService(
+        ledger_service,
+        audit_service,
+        report_store=report_store,
+    ).execute_auto_rebalance_actions(
+        orchestrator=orchestrator,
+        exposure_limit_bps=50.0,
+    )
+
+    assert summary.attempted_count == 2
+    assert summary.executed_count == 1
+    assert summary.skipped_count == 1
+    assert summary.failed_count == 0
+    assert orchestrator.calls == [
+        {
+            "trade_id": "hedge-exec-1",
+            "perp_notional_delta": 120.0,
+            "perp_quantity": 0.0016,
+            "notes": "auto hedge rebalance",
+        }
+    ]
+    outcomes = {item.trade_id: item.outcome for item in summary.results}
+    assert outcomes["hedge-exec-1"] == "executed"
+    assert outcomes["hedge-exec-2"] == "skipped"
+
+
+def test_hedge_manager_service_executes_single_rebalance_plan_with_inferred_quantity() -> None:
+    opened_at = datetime(2026, 4, 8, 19, 0, tzinfo=timezone.utc)
+    ledger_service = TradeLedgerService(TradeLedgerStore(make_path("hedge-single-ledger")))
+    audit_service = AuditEventService(AuditEventStore(make_path("hedge-single-audit")))
+    report_store = ExchangeOrderReportStore(make_path("hedge-single-reports"))
+    ledger_service.import_records(
+        [
+            TradeLedgerRecord(
+                trade_id="hedge-single-1",
+                mode="live",
+                strategy_id="funding-arb",
+                symbol="BTCUSDT",
+                status="hedged",
+                opened_at=opened_at,
+                net_exposure=120,
+                spot_notional=15000,
+                perp_notional=14880,
+            )
+        ],
+        mode="replace",
+    )
+    report_store.save(
+        [
+            ExchangeOrderReport(
+                venue="binance",
+                order_id="perp-single-1",
+                trade_id="hedge-single-1",
+                symbol="BTCUSDT",
+                leg="perp",
+                status="FILLED",
+                executed_qty=1.5,
+                cum_quote_qty=112500.0,
+                updated_at=opened_at + timedelta(seconds=3),
+            )
+        ],
+        mode="replace",
+    )
+
+    class StubOrchestrator:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, float | str | None]] = []
+
+        def rebalance_hedge(self, *, trade_id: str, perp_notional_delta: float, perp_quantity: float, notes: str | None = None):
+            self.calls.append(
+                {
+                    "trade_id": trade_id,
+                    "perp_notional_delta": perp_notional_delta,
+                    "perp_quantity": perp_quantity,
+                    "notes": notes,
+                }
+            )
+            return {"status": "ok"}
+
+    orchestrator = StubOrchestrator()
+    result = HedgeManagerService(
+        ledger_service,
+        audit_service,
+        report_store=report_store,
+    ).execute_rebalance_plan(
+        "hedge-single-1",
+        orchestrator=orchestrator,
+        notes="single rebalance",
+    )
+
+    assert result == {"status": "ok"}
+    assert orchestrator.calls == [
+        {
+            "trade_id": "hedge-single-1",
+            "perp_notional_delta": 120.0,
+            "perp_quantity": 0.0016,
+            "notes": "single rebalance",
+        }
+    ]
+
+
+def test_hedge_manager_service_rejects_single_rebalance_when_reference_price_missing() -> None:
+    opened_at = datetime(2026, 4, 8, 19, 30, tzinfo=timezone.utc)
+    ledger_service = TradeLedgerService(TradeLedgerStore(make_path("hedge-single-missing-ledger")))
+    audit_service = AuditEventService(AuditEventStore(make_path("hedge-single-missing-audit")))
+    ledger_service.import_records(
+        [
+            TradeLedgerRecord(
+                trade_id="hedge-single-missing-1",
+                mode="live",
+                strategy_id="funding-arb",
+                symbol="ETHUSDT",
+                status="hedged",
+                opened_at=opened_at,
+                net_exposure=90,
+                spot_notional=10000,
+                perp_notional=9910,
+            )
+        ],
+        mode="replace",
+    )
+
+    class StubOrchestrator:
+        def rebalance_hedge(self, **_: object) -> None:
+            raise AssertionError("rebalance_hedge should not be called when reference price is missing")
+
+    service = HedgeManagerService(
+        ledger_service,
+        audit_service,
+        report_store=ExchangeOrderReportStore(make_path("hedge-single-missing-reports")),
+    )
+
+    try:
+        service.execute_rebalance_plan("hedge-single-missing-1", orchestrator=StubOrchestrator())
+    except ValueError as exc:
+        assert "cannot infer perp reference price" in str(exc)
+    else:
+        raise AssertionError("expected ValueError when reference price is missing")

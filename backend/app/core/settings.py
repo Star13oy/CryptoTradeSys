@@ -16,9 +16,23 @@ class Settings(BaseSettings):
     live_execution_enabled: bool = False
     live_symbol_allowlist: str = "BTCUSDT,ETHUSDT,SOLUSDT"
     max_live_notional: float = 25000
+    live_circuit_breaker_enabled: bool = True
+    live_circuit_breaker_failure_threshold: int = 2
+    live_circuit_breaker_cooldown_seconds: float = 300.0
     reconciliation_worker_enabled: bool = False
     reconciliation_worker_interval_seconds: float = 30.0
     reconciliation_worker_limit: int = 5
+    recovery_worker_enabled: bool = False
+    recovery_worker_interval_seconds: float = 30.0
+    recovery_worker_limit: int = 3
+    compensation_worker_enabled: bool = False
+    compensation_worker_interval_seconds: float = 30.0
+    compensation_worker_limit: int = 3
+    compensation_worker_exposure_limit_bps: float = 50.0
+    hedge_rebalance_worker_enabled: bool = False
+    hedge_rebalance_worker_interval_seconds: float = 30.0
+    hedge_rebalance_worker_limit: int = 3
+    hedge_rebalance_worker_exposure_limit_bps: float = 50.0
     scan_limit: int = 25
     storage_backend: Literal["json", "mysql"] = "json"
     mysql_host: str = "127.0.0.1"
@@ -34,6 +48,7 @@ class Settings(BaseSettings):
     trade_ledger_path: str = "backend/runtime/trade-ledger.json"
     audit_event_path: str = "backend/runtime/audit-events.json"
     exchange_order_report_path: str = "backend/runtime/exchange-order-reports.json"
+    execution_circuit_breaker_state_path: str = "backend/runtime/execution-circuit-breaker.json"
 
 
 @lru_cache

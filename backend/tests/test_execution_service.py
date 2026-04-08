@@ -1,14 +1,16 @@
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from app.audit import AuditEventService, AuditEventStore
 from app.execution import (
+    ExecutionCircuitBreakerService,
     ExecutionIntentRequest,
     ExecutionLegReport,
     ExecutionOrchestrator,
     ExecutionRecoveryRequest,
 )
-from app.ledger import TradeLedgerService, TradeLedgerStore
+from app.ledger import TradeLedgerRecord, TradeLedgerService, TradeLedgerStore
 
 
 def make_path(suffix: str) -> Path:
@@ -200,6 +202,87 @@ def test_execution_service_live_partial_fill_enters_recovery_pending() -> None:
     ]
 
 
+def test_execution_service_opens_live_circuit_breaker_after_repeated_failures() -> None:
+    class FailingLiveAdapter:
+        def open_hedge(self, request: ExecutionIntentRequest) -> list[ExecutionLegReport]:
+            return [
+                ExecutionLegReport(leg="spot", status="filled", payload={"orderId": "spot-1"}),
+                ExecutionLegReport(leg="perp", status="failed", payload={"orderId": "perp-1"}),
+            ]
+
+        def close_hedge(self, request: ExecutionIntentRequest, existing) -> list[ExecutionLegReport]:
+            raise NotImplementedError
+
+    ledger_service = TradeLedgerService(TradeLedgerStore(make_path("ledger-circuit-breaker")))
+    audit_service = AuditEventService(AuditEventStore(make_path("audit-circuit-breaker")))
+    circuit_breaker = ExecutionCircuitBreakerService(
+        path=make_path("circuit-breaker-state"),
+        enabled=True,
+        failure_threshold=2,
+        cooldown_seconds=300,
+    )
+    orchestrator = ExecutionOrchestrator(
+        ledger_service,
+        audit_service,
+        live_adapter=FailingLiveAdapter(),
+        live_execution_enabled=True,
+        live_symbol_allowlist={"BTCUSDT"},
+        circuit_breaker=circuit_breaker,
+    )
+
+    first = orchestrator.execute(
+        ExecutionIntentRequest(
+            trade_id="exec-live-cb-1",
+            mode="live",
+            strategy_id="funding-arb",
+            symbol="BTCUSDT",
+            action="open_hedge",
+            spot_notional=15000,
+            perp_notional=14980,
+            perp_quantity=0.25,
+        )
+    )
+    second = orchestrator.execute(
+        ExecutionIntentRequest(
+            trade_id="exec-live-cb-2",
+            mode="live",
+            strategy_id="funding-arb",
+            symbol="BTCUSDT",
+            action="open_hedge",
+            spot_notional=15000,
+            perp_notional=14980,
+            perp_quantity=0.25,
+        )
+    )
+
+    assert first.status == "failed"
+    assert second.status == "failed"
+    breaker_state = circuit_breaker.get_state()
+    assert breaker_state.is_open is True
+    assert breaker_state.consecutive_failures == 2
+
+    try:
+        orchestrator.execute(
+            ExecutionIntentRequest(
+                trade_id="exec-live-cb-3",
+                mode="live",
+                strategy_id="funding-arb",
+                symbol="BTCUSDT",
+                action="open_hedge",
+                spot_notional=15000,
+                perp_notional=14980,
+                perp_quantity=0.25,
+            )
+        )
+    except ValueError as exc:
+        assert "circuit breaker is open" in str(exc)
+    else:
+        raise AssertionError("expected live circuit breaker to block execution")
+
+    events = audit_service.list_events(source="execution-orchestrator")
+    assert "execution.circuit_breaker.opened" in [event.event_type for event in events]
+
+
 def test_execution_service_replays_idempotent_open_without_duplicate_fill_flow() -> None:
     orchestrator, ledger_service, audit_service = build_service()
     request = ExecutionIntentRequest(
@@ -256,6 +339,74 @@ def test_execution_service_recovers_failed_open_into_hedged() -> None:
         "execution.recovery.started",
         "execution.recovery.perp.filled",
         "execution.recovery.completed",
+    ]
+
+
+def test_execution_service_rebalances_live_perp_and_updates_ledger() -> None:
+    class StubLiveAdapter:
+        def rebalance_perp(self, *, trade_id: str, symbol: str, side: str, quantity: float, reduce_only: bool):
+            assert trade_id == "exec-rebalance-1"
+            assert symbol == "BTCUSDT"
+            assert side == "SELL"
+            assert quantity == 0.02
+            assert reduce_only is False
+            return ExecutionLegReport(
+                leg="perp",
+                status="filled",
+                payload={"orderId": "perp-rb-1", "executedQty": "0.02", "status": "FILLED"},
+            )
+
+        def open_hedge(self, request: ExecutionIntentRequest) -> list[ExecutionLegReport]:
+            raise NotImplementedError
+
+        def close_hedge(self, request: ExecutionIntentRequest, existing) -> list[ExecutionLegReport]:
+            raise NotImplementedError
+
+    ledger_service = TradeLedgerService(TradeLedgerStore(make_path("ledger-rebalance-live")))
+    audit_service = AuditEventService(AuditEventStore(make_path("audit-rebalance-live")))
+    ledger_service.import_records(
+        [
+            TradeLedgerRecord(
+                trade_id="exec-rebalance-1",
+                mode="live",
+                strategy_id="funding-arb",
+                symbol="BTCUSDT",
+                status="hedged",
+                opened_at=datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc),
+                spot_notional=15000,
+                perp_notional=14880,
+                net_exposure=120,
+            )
+        ],
+        mode="replace",
+    )
+    orchestrator = ExecutionOrchestrator(
+        ledger_service,
+        audit_service,
+        live_adapter=StubLiveAdapter(),
+        live_execution_enabled=True,
+        live_symbol_allowlist={"BTCUSDT"},
+        max_live_notional=1000,
+    )
+
+    result = orchestrator.rebalance_hedge(
+        trade_id="exec-rebalance-1",
+        perp_notional_delta=120,
+        perp_quantity=0.02,
+        notes="compensation rebalance",
+    )
+
+    assert result.action == "rebalance_hedge"
+    assert result.status == "hedged"
+    record = ledger_service.get_record("exec-rebalance-1")
+    assert record is not None
+    assert record.perp_notional == 15000
+    assert record.net_exposure == 0
+    events = audit_service.list_events(source="execution-orchestrator")
+    assert [event.event_type for event in events][-3:] == [
+        "execution.rebalance.started",
+        "execution.live.rebalance.perp.filled",
+        "execution.rebalance.completed",
     ]
 
 

@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-截至 `2026-04-07`，这个仓库已经不再只是一个 UI 原型，而是包含了一个可运行的 `Phase 1` 后端基础设施，以及与 Stitch 原型对齐的多页面控制台外壳。
+截至 `2026-04-08`，这个仓库已经不再只是一个 UI 原型，而是包含了一个可运行的 `Phase 1` 后端基础设施，以及与 Stitch 原型对齐的多页面控制台外壳。
 
 ### 当前已实现
 
@@ -48,6 +48,16 @@
 24. 轻量级 in-process `reconciliation worker`，带状态查询和手动触发 API，使 attention queue 同步不再只能靠操作员手动触发。
 25. 总览页与扫描页已经展示原始行情细节，不再只有评分，包括 `spot/perp bid-ask`、`mid`、`basis` 和双腿点差成本。
 26. 恢复规划层，可把 `failed / recovery_pending` 交易转成显式的 `resume_open / resume_close / manual_review` 计划，并只对当前安全可恢复的子集做批量自动执行。
+27. 轻量级 in-process `recovery worker`，可按固定间隔自动执行安全可恢复的计划，并暴露 worker 状态与手动触发 API。
+28. live execution 熔断器，可在连续 live 异常后自动阻断新的 live 请求，暴露状态查询与手动复位接口，并在成功执行后自动清零失败计数。
+29. live adapter 已支持“安全重试”下单：当下单请求因链路异常失败时，会先按同一 `clientOrderId` 查询交易所订单状态，确认未下达后才做一次受控重试，避免盲目重复下单。
+30. 补偿规划层已支持安全执行入口：`sync_exchange_reports`、恢复动作，以及在能从既有永续成交回报推导出参考价格时的 `rebalance_hedge` 都可以受控执行；其余仍未闭环的危险动作会被显式跳过并返回结构化结果。
+31. 轻量级 in-process `compensation worker` 已落地，可按固定间隔轮询补偿安全动作，并暴露状态查询与手动触发 API。
+32. `risk-center` 已接入对账候选与状态面板，可直接展示待关注交易、缺失订单与建议动作。
+33. 已补上手动 hedge rebalance API：`POST /api/v1/algo/hedge/rebalance/{trade_id}`，用于对指定交易发起受控再平衡。
+34. 轻量级 in-process `hedge rebalance worker` 已落地，可按固定间隔扫描 `rebalance_required` 仓位，并在能推导出安全数量时自动执行再平衡。
+35. `positions` 已接入 `hedge worker` 状态卡与手动触发入口，`risk-center` 已接入 reconciliation / recovery / compensation worker 和 live circuit breaker 的手动触发入口。
+36. 已补上单笔自动数量推导的再平衡执行入口：`POST /api/v1/algo/hedge/rebalance-auto/{trade_id}`，可直接从既有永续成交回报推导参考价与数量，供 `positions` 页做一键再平衡。
 
 ## 当前后端能力面
 
@@ -79,17 +89,29 @@
 24. `/api/v1/algo/execution/summary`
 25. `/api/v1/algo/hedge/overview`
 26. `/api/v1/algo/hedge/rebalance-plan/{trade_id}`
-27. `/api/v1/algo/reconciliation/reports`
-28. `/api/v1/algo/reconciliation/reports/import`
-29. `/api/v1/algo/reconciliation/summary`
-30. `/api/v1/algo/reconciliation/candidates`
-31. `/api/v1/algo/persistence/backfill-json`
-32. `/api/v1/algo/reconciliation/sync/{trade_id}`
-33. `/api/v1/algo/reconciliation/sync`
-34. `/api/v1/algo/reconciliation/worker`
-35. `/api/v1/algo/reconciliation/worker/run`
-36. `/api/v1/algo/recovery/plans`
-37. `/api/v1/algo/recovery/execute-auto`
+27. `/api/v1/algo/hedge/rebalance/{trade_id}`
+28. `/api/v1/algo/hedge/rebalance-auto/{trade_id}`
+29. `/api/v1/algo/hedge/worker`
+30. `/api/v1/algo/hedge/worker/run`
+31. `/api/v1/algo/reconciliation/reports`
+32. `/api/v1/algo/reconciliation/reports/import`
+33. `/api/v1/algo/reconciliation/summary`
+34. `/api/v1/algo/reconciliation/candidates`
+35. `/api/v1/algo/persistence/backfill-json`
+36. `/api/v1/algo/reconciliation/sync/{trade_id}`
+37. `/api/v1/algo/reconciliation/sync`
+38. `/api/v1/algo/reconciliation/worker`
+39. `/api/v1/algo/reconciliation/worker/run`
+40. `/api/v1/algo/recovery/plans`
+41. `/api/v1/algo/recovery/execute-auto`
+42. `/api/v1/algo/recovery/worker`
+43. `/api/v1/algo/recovery/worker/run`
+44. `/api/v1/algo/execution/circuit-breaker`
+45. `/api/v1/algo/execution/circuit-breaker/reset`
+46. `/api/v1/algo/compensation/plans`
+47. `/api/v1/algo/compensation/execute`
+48. `/api/v1/algo/compensation/worker`
+49. `/api/v1/algo/compensation/worker/run`
 
 ### 运行时模块
 
@@ -107,6 +129,8 @@
 - `backend/app/reconciliation/`：交易所订单回报、账本 / 审计对账摘要
 - `backend/app/reconciliation/worker.py`：基于间隔轮询的 attention queue 同步 worker 与运行状态快照
 - `backend/app/recovery/`：恢复规划、动作可执行性判断与自动恢复摘要
+- `backend/app/compensation/`：补偿计划生成、安全执行 allowlist 与结构化执行结果
+- `backend/app/compensation/worker.py`：补偿安全动作的轻量级轮询 worker
 - `backend/app/persistence/`：可选 MySQL 持久化与后端选择逻辑
 - `backend/app/persistence/migration.py`：`JSON -> MySQL` 回填服务与摘要 schema
 - `backend/app/exchange/binance_trading.py`：已签名 Binance 交易客户端
@@ -124,9 +148,9 @@
 
 当前 worktree 最新验证结果：
 
-1. Full backend suite: `91 passed, 6 skipped`
+1. Full backend suite: `132 passed, 6 skipped`
 2. Focused reconciliation-worker slice: `5 passed`
-3. Full frontend suite: `18 passed`
+3. Full frontend suite: `29 passed`
 4. Frontend production build: `vite build` passed
 5. 在 `projected-edge` 口径校准后，真实 Binance 烟测已不再出现“全为零分”的情况，系统能筛出正分机会。
 6. `trade journal` 提取已支持按 `symbol` 过滤、最近 `N` 条截取和确定性顺序。
@@ -138,9 +162,13 @@
 12. JSON 历史状态已支持幂等回填到 MySQL，避免重复导入。
 13. 单笔 live trade 已支持触发已签名交易所查询，因此对账不再局限于手工导入。
 14. 风控中心已经直接消费 `reconciliation candidates`，需要关注的交易会直接出现在 UI 中，而不是占位演示数据。
-15. `reconciliation service` 已支持对高优先级 attention queue 做批量同步，并通过轻量级 interval worker 运行。
-16. 总览与扫描页现在会展示原始 `spot/perp bid-ask`、`mid`、`basis` 和 spread 成本，而不是只显示派生评分。
-17. 恢复规划层现在可以把 `failed / recovery_pending` 交易分类为 `resume_open / resume_close / manual_review`，且自动恢复接口只会执行当前对账上下文下安全的那部分计划。
+15. `risk-center` 已补上状态面板，能把对账候选、缺失订单与建议动作集中展示出来。
+16. `reconciliation service` 已支持对高优先级 attention queue 做批量同步，并通过轻量级 interval worker 运行。
+17. 总览与扫描页现在会展示原始 `spot/perp bid-ask`、`mid`、`basis` 和 spread 成本，而不是只显示派生评分。
+18. 恢复规划层现在可以把 `failed / recovery_pending` 交易分类为 `resume_open / resume_close / manual_review`，且自动恢复接口只会执行当前对账上下文下安全的那部分计划。
+19. 补偿执行接口现在会返回逐笔结构化结果，并且只允许安全动作进入自动执行；`rebalance_hedge` 在能从既有永续成交回报推导数量时也可受控执行。
+20. 补偿 worker 状态接口和手动触发接口已经可用，本地重启后的 [worker status](http://127.0.0.1:8000/api/v1/algo/compensation/worker) 会返回快照。
+21. `positions` 页现在已经支持对当前选中且确实需要再平衡的交易做“一键执行再平衡”，无需操作员手工输入永续数量。
 
 ## 本地启动
 
@@ -208,6 +236,40 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/recovery/plans"
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/recovery/execute-auto?limit=2"
 ```
 
+如需查看补偿计划，或只执行补偿安全 allowlist 中的动作：
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/compensation/plans?only_actionable=true"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/compensation/execute?limit=3"
+```
+
+启用 `compensation worker` 后，如需查看状态或手动触发一轮：
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/compensation/worker"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/compensation/worker/run"
+```
+
+如需对单笔活跃仓位直接执行自动数量推导的再平衡：
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/hedge/rebalance-auto/<trade_id>"
+```
+
+启用 `recovery worker` 后，如需查看状态或手动触发一轮：
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/recovery/worker"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/recovery/worker/run"
+```
+
+如需查看 live 熔断器状态，或手动复位：
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/algo/execution/circuit-breaker"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/algo/execution/circuit-breaker/reset"
+```
+
 ### 前端
 
 ```powershell
@@ -226,6 +288,6 @@ npm run dev
 2. 在当前 `hedge overview` 读模型之上，还缺持仓账本补强和 `hedge manager` 的动作执行闭环。
 3. 更完整的已签名历史市场 / 历史交易数据采集与同步，而不是只靠手工导入数据集。
 4. 前端仍需把回测、模型、账本、执行、自适应和恢复控制真正接到页面上，目前已接好的仍主要是 dashboard / scan / positions / risk。
-5. live 场景下仍缺 circuit breaker、rebalance worker、recovery worker 等真正的守护进程。
+5. live 场景下虽然已有基础 `circuit breaker`、安全重试下单、`rebalance_hedge` 的受控执行、手动 hedge rebalance API、`compensation worker` 与 `hedge rebalance worker`，但还缺 `flatten_*` 这类动作的自动化闭环，以及更生产化的守护进程形态。
 6. 基于 MySQL 的更强事务边界、回填工具和一致性保证还需要继续补。
-7. 当前的 in-process reconciliation worker 还要进一步升级为更接近生产的 daemon / supervisor 形态，补上更强的持久化、告警与多进程安全。
+7. 当前的 in-process reconciliation / recovery worker 还要进一步升级为更接近生产的 daemon / supervisor 形态，补上更强的持久化、告警与多进程安全。

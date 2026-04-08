@@ -10,6 +10,8 @@ from app.audit import (
 )
 from app.execution import (
     BinanceLiveExecutionAdapter,
+    ExecutionCircuitBreakerService,
+    ExecutionCircuitBreakerState,
     ExecutionConsoleSnapshot,
     ExecutionIntentRequest,
     ExecutionRecoveryRequest,
@@ -26,7 +28,22 @@ from app.backtest import (
 )
 from app.exchange.binance_trading import BinanceTradingClient
 from app.core.settings import get_settings
-from app.hedge import HedgeManagerService, HedgeOverview, HedgeRebalancePlan
+from app.compensation import (
+    CompensationExecutionSummary,
+    CompensationPlanListResponse,
+    CompensationService,
+    CompensationWorker,
+    CompensationWorkerSnapshot,
+)
+from app.hedge import (
+    HedgeAutoRebalanceExecutionRequest,
+    HedgeManagerService,
+    HedgeOverview,
+    HedgeRebalanceWorker,
+    HedgeRebalanceWorkerSnapshot,
+    HedgeRebalanceExecutionRequest,
+    HedgeRebalancePlan,
+)
 from app.journal import TradeJournalService
 from app.journal.schemas import (
     TradeJournalImportRequest,
@@ -55,6 +72,7 @@ from app.reconciliation import (
     ReconciliationWorkerSnapshot,
 )
 from app.recovery import RecoveryExecutionSummary, RecoveryPlanListResponse, RecoveryService
+from app.recovery import RecoveryWorker, RecoveryWorkerSnapshot
 from app.schemas.adaptation import (
     AdaptationPackageEvaluationRequest,
     AdaptationPackageEvaluationResponse,
@@ -106,6 +124,7 @@ def get_audit_event_service() -> AuditEventService:
 def get_execution_orchestrator(
     ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
     audit_service: AuditEventService = Depends(get_audit_event_service),
+    circuit_breaker: ExecutionCircuitBreakerService = Depends(lambda: get_execution_circuit_breaker_service()),
 ) -> ExecutionOrchestrator:
     settings = get_settings()
     live_adapter = None
@@ -120,9 +139,20 @@ def get_execution_orchestrator(
         ledger_service,
         audit_service,
         live_adapter=live_adapter,
+        circuit_breaker=circuit_breaker,
         live_execution_enabled=settings.live_execution_enabled,
         live_symbol_allowlist=allowlist,
         max_live_notional=settings.max_live_notional,
+    )
+
+
+def get_execution_circuit_breaker_service() -> ExecutionCircuitBreakerService:
+    settings = get_settings()
+    return ExecutionCircuitBreakerService(
+        path=settings.execution_circuit_breaker_state_path,
+        enabled=settings.live_circuit_breaker_enabled,
+        failure_threshold=settings.live_circuit_breaker_failure_threshold,
+        cooldown_seconds=settings.live_circuit_breaker_cooldown_seconds,
     )
 
 
@@ -137,7 +167,60 @@ def get_hedge_manager_service(
     ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
     audit_service: AuditEventService = Depends(get_audit_event_service),
 ) -> HedgeManagerService:
-    return HedgeManagerService(ledger_service, audit_service)
+    settings = get_settings()
+    from app.reconciliation import ExchangeOrderReportStore
+
+    return HedgeManagerService(
+        ledger_service,
+        audit_service,
+        report_store=ExchangeOrderReportStore(settings.exchange_order_report_path),
+    )
+
+
+def build_hedge_rebalance_worker() -> HedgeRebalanceWorker:
+    settings = get_settings()
+    ledger_service = TradeLedgerService(TradeLedgerStore(settings.trade_ledger_path))
+    audit_service = AuditEventService(AuditEventStore(settings.audit_event_path))
+    from app.reconciliation import ExchangeOrderReportStore
+
+    hedge_service = HedgeManagerService(
+        ledger_service,
+        audit_service,
+        report_store=ExchangeOrderReportStore(settings.exchange_order_report_path),
+    )
+    allowlist = {
+        symbol.strip().upper()
+        for symbol in settings.live_symbol_allowlist.split(",")
+        if symbol.strip()
+    }
+    live_adapter = None
+    if settings.binance_api_key and settings.binance_api_secret:
+        live_adapter = BinanceLiveExecutionAdapter(BinanceTradingClient())
+    orchestrator = ExecutionOrchestrator(
+        ledger_service,
+        audit_service,
+        live_adapter=live_adapter,
+        circuit_breaker=get_execution_circuit_breaker_service(),
+        live_execution_enabled=settings.live_execution_enabled,
+        live_symbol_allowlist=allowlist,
+        max_live_notional=settings.max_live_notional,
+    )
+    return HedgeRebalanceWorker(
+        hedge_service,
+        orchestrator=orchestrator,
+        enabled=settings.hedge_rebalance_worker_enabled,
+        interval_seconds=settings.hedge_rebalance_worker_interval_seconds,
+        limit=settings.hedge_rebalance_worker_limit,
+        exposure_limit_bps=settings.hedge_rebalance_worker_exposure_limit_bps,
+    )
+
+
+def get_hedge_rebalance_worker(request: Request) -> HedgeRebalanceWorker:
+    worker = getattr(request.app.state, "hedge_rebalance_worker", None)
+    if worker is None:
+        worker = build_hedge_rebalance_worker()
+        request.app.state.hedge_rebalance_worker = worker
+    return worker
 
 
 def get_reconciliation_service(
@@ -177,11 +260,56 @@ def build_reconciliation_worker() -> ReconciliationWorker:
     )
 
 
+def build_recovery_worker() -> RecoveryWorker:
+    settings = get_settings()
+    ledger_service = TradeLedgerService(TradeLedgerStore(settings.trade_ledger_path))
+    audit_service = AuditEventService(AuditEventStore(settings.audit_event_path))
+    from app.reconciliation import ExchangeOrderReportStore
+
+    reconciliation_service = ReconciliationService(
+        ExchangeOrderReportStore(settings.exchange_order_report_path),
+        ledger_service,
+        audit_service,
+    )
+    recovery_service = RecoveryService(ledger_service, audit_service, reconciliation_service)
+    allowlist = {
+        symbol.strip().upper()
+        for symbol in settings.live_symbol_allowlist.split(",")
+        if symbol.strip()
+    }
+    live_adapter = None
+    if settings.binance_api_key and settings.binance_api_secret:
+        live_adapter = BinanceLiveExecutionAdapter(BinanceTradingClient())
+    orchestrator = ExecutionOrchestrator(
+        ledger_service,
+        audit_service,
+        live_adapter=live_adapter,
+        live_execution_enabled=settings.live_execution_enabled,
+        live_symbol_allowlist=allowlist,
+        max_live_notional=settings.max_live_notional,
+    )
+    return RecoveryWorker(
+        recovery_service,
+        orchestrator=orchestrator,
+        enabled=settings.recovery_worker_enabled,
+        interval_seconds=settings.recovery_worker_interval_seconds,
+        limit=settings.recovery_worker_limit,
+    )
+
+
 def get_reconciliation_worker(request: Request) -> ReconciliationWorker:
     worker = getattr(request.app.state, "reconciliation_worker", None)
     if worker is None:
         worker = build_reconciliation_worker()
         request.app.state.reconciliation_worker = worker
+    return worker
+
+
+def get_recovery_worker(request: Request) -> RecoveryWorker:
+    worker = getattr(request.app.state, "recovery_worker", None)
+    if worker is None:
+        worker = build_recovery_worker()
+        request.app.state.recovery_worker = worker
     return worker
 
 
@@ -195,6 +323,66 @@ def get_recovery_service(
 
 def get_persistence_backfill_service() -> JsonToMySQLBackfillService:
     return JsonToMySQLBackfillService()
+
+
+def get_compensation_service(
+    ledger_service: TradeLedgerService = Depends(get_trade_ledger_service),
+    audit_service: AuditEventService = Depends(get_audit_event_service),
+) -> CompensationService:
+    settings = get_settings()
+    from app.reconciliation import ExchangeOrderReportStore
+
+    return CompensationService(
+        ledger_service=ledger_service,
+        audit_service=audit_service,
+        report_store=ExchangeOrderReportStore(settings.exchange_order_report_path),
+    )
+
+
+def build_compensation_worker() -> CompensationWorker:
+    settings = get_settings()
+    ledger_service = TradeLedgerService(TradeLedgerStore(settings.trade_ledger_path))
+    audit_service = AuditEventService(AuditEventStore(settings.audit_event_path))
+    from app.reconciliation import ExchangeOrderReportStore
+
+    compensation_service = CompensationService(
+        ledger_service=ledger_service,
+        audit_service=audit_service,
+        report_store=ExchangeOrderReportStore(settings.exchange_order_report_path),
+    )
+    allowlist = {
+        symbol.strip().upper()
+        for symbol in settings.live_symbol_allowlist.split(",")
+        if symbol.strip()
+    }
+    live_adapter = None
+    if settings.binance_api_key and settings.binance_api_secret:
+        live_adapter = BinanceLiveExecutionAdapter(BinanceTradingClient())
+    orchestrator = ExecutionOrchestrator(
+        ledger_service,
+        audit_service,
+        live_adapter=live_adapter,
+        circuit_breaker=get_execution_circuit_breaker_service(),
+        live_execution_enabled=settings.live_execution_enabled,
+        live_symbol_allowlist=allowlist,
+        max_live_notional=settings.max_live_notional,
+    )
+    return CompensationWorker(
+        compensation_service,
+        orchestrator=orchestrator,
+        enabled=settings.compensation_worker_enabled,
+        interval_seconds=settings.compensation_worker_interval_seconds,
+        limit=settings.compensation_worker_limit,
+        exposure_limit_bps=settings.compensation_worker_exposure_limit_bps,
+    )
+
+
+def get_compensation_worker(request: Request) -> CompensationWorker:
+    worker = getattr(request.app.state, "compensation_worker", None)
+    if worker is None:
+        worker = build_compensation_worker()
+        request.app.state.compensation_worker = worker
+    return worker
 
 
 @router.post("/risk/evaluate", response_model=RiskDecision)
@@ -429,6 +617,20 @@ async def get_execution_summary(
     return read_service.snapshot(limit_incidents=limit_incidents)
 
 
+@router.get("/execution/circuit-breaker", response_model=ExecutionCircuitBreakerState)
+async def get_execution_circuit_breaker_status(
+    circuit_breaker: ExecutionCircuitBreakerService = Depends(get_execution_circuit_breaker_service),
+) -> ExecutionCircuitBreakerState:
+    return circuit_breaker.get_state()
+
+
+@router.post("/execution/circuit-breaker/reset", response_model=ExecutionCircuitBreakerState)
+async def reset_execution_circuit_breaker(
+    circuit_breaker: ExecutionCircuitBreakerService = Depends(get_execution_circuit_breaker_service),
+) -> ExecutionCircuitBreakerState:
+    return circuit_breaker.manual_reset()
+
+
 @router.get("/hedge/overview", response_model=HedgeOverview)
 async def get_hedge_overview(
     exposure_limit_bps: float = 50.0,
@@ -447,6 +649,74 @@ async def get_hedge_rebalance_plan(
         return hedge_service.build_rebalance_plan(trade_id, exposure_limit_bps=exposure_limit_bps)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/hedge/rebalance/{trade_id}", response_model=ExecutionResult)
+async def execute_hedge_rebalance(
+    trade_id: str,
+    request: HedgeRebalanceExecutionRequest,
+    hedge_service: HedgeManagerService = Depends(get_hedge_manager_service),
+    orchestrator: ExecutionOrchestrator = Depends(get_execution_orchestrator),
+) -> ExecutionResult:
+    try:
+        plan = hedge_service.build_rebalance_plan(trade_id, exposure_limit_bps=request.exposure_limit_bps)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    if (
+        plan.recommended_action not in {"increase_perp_hedge", "reduce_perp_hedge"}
+        or plan.suggested_perp_notional_delta == 0
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"trade '{trade_id}' does not currently require hedge rebalance",
+        )
+
+    try:
+        return orchestrator.rebalance_hedge(
+            trade_id=trade_id,
+            perp_notional_delta=plan.suggested_perp_notional_delta,
+            perp_quantity=request.perp_quantity,
+            notes=request.notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/hedge/rebalance-auto/{trade_id}", response_model=ExecutionResult)
+async def execute_hedge_rebalance_auto(
+    trade_id: str,
+    request: HedgeAutoRebalanceExecutionRequest | None = None,
+    hedge_service: HedgeManagerService = Depends(get_hedge_manager_service),
+    orchestrator: ExecutionOrchestrator = Depends(get_execution_orchestrator),
+) -> ExecutionResult:
+    payload = request or HedgeAutoRebalanceExecutionRequest()
+    try:
+        return hedge_service.execute_rebalance_plan(
+            trade_id,
+            orchestrator=orchestrator,
+            exposure_limit_bps=payload.exposure_limit_bps,
+            notes=payload.notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/hedge/worker", response_model=HedgeRebalanceWorkerSnapshot)
+async def get_hedge_rebalance_worker_status(
+    worker: HedgeRebalanceWorker = Depends(get_hedge_rebalance_worker),
+) -> HedgeRebalanceWorkerSnapshot:
+    return worker.snapshot()
+
+
+@router.post("/hedge/worker/run", response_model=HedgeRebalanceWorkerSnapshot)
+async def run_hedge_rebalance_worker_once(
+    worker: HedgeRebalanceWorker = Depends(get_hedge_rebalance_worker),
+) -> HedgeRebalanceWorkerSnapshot:
+    try:
+        return await worker.run_once()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/reconciliation/reports", response_model=ExchangeOrderReportListResponse)
@@ -546,6 +816,23 @@ async def execute_recovery_plans(
     )
 
 
+@router.get("/recovery/worker", response_model=RecoveryWorkerSnapshot)
+async def get_recovery_worker_status(
+    worker: RecoveryWorker = Depends(get_recovery_worker),
+) -> RecoveryWorkerSnapshot:
+    return worker.snapshot()
+
+
+@router.post("/recovery/worker/run", response_model=RecoveryWorkerSnapshot)
+async def run_recovery_worker_once(
+    worker: RecoveryWorker = Depends(get_recovery_worker),
+) -> RecoveryWorkerSnapshot:
+    try:
+        return await worker.run_once()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/reconciliation/summary", response_model=ReconciliationSummary)
 async def get_reconciliation_summary(
     reconciliation_service: ReconciliationService = Depends(get_reconciliation_service),
@@ -570,5 +857,54 @@ async def backfill_json_to_mysql(
 ) -> PersistenceBackfillSummary:
     try:
         return backfill_service.run()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/compensation/plans", response_model=CompensationPlanListResponse)
+async def list_compensation_plans(
+    symbol: str | None = None,
+    only_actionable: bool = False,
+    exposure_limit_bps: float = 50.0,
+    compensation_service: CompensationService = Depends(get_compensation_service),
+) -> CompensationPlanListResponse:
+    return CompensationPlanListResponse(
+        plans=compensation_service.list_plans(
+            symbol=symbol,
+            only_actionable=only_actionable,
+            exposure_limit_bps=exposure_limit_bps,
+        )
+    )
+
+
+@router.post("/compensation/execute", response_model=CompensationExecutionSummary)
+async def execute_compensation_actions(
+    symbol: str | None = None,
+    limit: int | None = None,
+    exposure_limit_bps: float = 50.0,
+    compensation_service: CompensationService = Depends(get_compensation_service),
+    orchestrator: ExecutionOrchestrator = Depends(get_execution_orchestrator),
+) -> CompensationExecutionSummary:
+    return compensation_service.execute_safe_actions(
+        orchestrator=orchestrator,
+        symbol=symbol,
+        limit=limit,
+        exposure_limit_bps=exposure_limit_bps,
+    )
+
+
+@router.get("/compensation/worker", response_model=CompensationWorkerSnapshot)
+async def get_compensation_worker_status(
+    worker: CompensationWorker = Depends(get_compensation_worker),
+) -> CompensationWorkerSnapshot:
+    return worker.snapshot()
+
+
+@router.post("/compensation/worker/run", response_model=CompensationWorkerSnapshot)
+async def run_compensation_worker_once(
+    worker: CompensationWorker = Depends(get_compensation_worker),
+) -> CompensationWorkerSnapshot:
+    try:
+        return await worker.run_once()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
