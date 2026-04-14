@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 import { apiGet } from "../../shared/api/client";
-import type { DashboardSummary } from "../../shared/contracts/console";
+import { apiClient } from "../../shared/api/client";
+import type { DashboardSummary, AccountSummary, SafetyStateSnapshot, EmergencyCloseResult } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
 const timeFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -77,6 +78,25 @@ export function DashboardPage() {
     queryFn: () => apiGet<DashboardSummary>("/api/v1/dashboard/summary"),
   });
 
+  const accountQuery = useQuery<AccountSummary>({
+    queryKey: ["account-summary"],
+    queryFn: () => apiClient.getAccountSummary<AccountSummary>(),
+    staleTime: 30_000,
+  });
+
+  const safetyQuery = useQuery<SafetyStateSnapshot>({
+    queryKey: ["safety-state"],
+    queryFn: () => apiClient.getSafetyState<SafetyStateSnapshot>(),
+    staleTime: 10_000,
+  });
+
+  const emergencyCloseMutation = useMutation({
+    mutationFn: () => apiClient.emergencyCloseAll<EmergencyCloseResult>(),
+    onSuccess: () => {
+      safetyQuery.refetch();
+    },
+  });
+
   const data = summaryQuery.data;
   const averageEdge =
     data && data.top_opportunities.length > 0
@@ -113,12 +133,16 @@ export function DashboardPage() {
   const metricCards = [
     {
       label: "总权益 (USDT)",
-      value: data ? "待接入" : "--.--",
+      value: accountQuery.data?.balance
+        ? `$${accountQuery.data.balance.total_usdt_equity.toFixed(2)}`
+        : "--.--",
       hint: "账户聚合数据将随私有账户接入替换",
     },
     {
       label: "可用余额",
-      value: data ? formatCoverage(data) : "--.--",
+      value: accountQuery.data?.balance
+        ? `$${accountQuery.data.balance.available_usdt.toFixed(2)}`
+        : "--.--",
       hint: "当前以行情覆盖率代理资产可动用区间",
     },
     {
@@ -145,6 +169,11 @@ export function DashboardPage() {
 
   return (
     <TerminalLayout activePath="/">
+      {safetyQuery.data?.frozen && (
+        <div style={{ background: "#ff4444", color: "white", padding: "8px 16px", textAlign: "center", fontWeight: "bold", marginBottom: "8px" }}>
+          ⚠ 账户已冻结 — 所有交易已停止
+        </div>
+      )}
       <section className="dashboard-overview-grid">
         {metricCards.map((card, index) => (
           <article className="overview-card" key={card.label}>
@@ -310,8 +339,17 @@ export function DashboardPage() {
                 </div>
               </div>
 
-              <button className="risk-panel__force-button" type="button">
-                紧急一键平仓 (FORCE CLOSE)
+              <button
+                className="risk-panel__force-button"
+                type="button"
+                onClick={() => {
+                  if (window.confirm("确认紧急平仓所有持仓？此操作不可撤销！")) {
+                    emergencyCloseMutation.mutate();
+                  }
+                }}
+                disabled={emergencyCloseMutation.isPending}
+              >
+                {emergencyCloseMutation.isPending ? "平仓中..." : "紧急一键平仓 (FORCE CLOSE)"}
               </button>
             </div>
           </article>

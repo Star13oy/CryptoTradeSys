@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd \\\"d:/code/crypto/CryptoTradeSys/frontend\\\" && npx tsc --noEmit src/shared/contracts/console.ts src/shared/api/client.ts src/pages/login/page.tsx src/app/router.tsx src/shared/ui/termina...",
+  "error": "Exit code 2\nnode_modules/@tanstack/query-core/build/legacy/_tsup-dts-rollup.d.ts(21,61): error TS2583: Cannot find name 'AsyncIterable'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2018' or later.\r\nnode_modules/@tanstack/query-core/build/legacy/_tsup-dts-rollup.d.ts(21,99): error TS2583: Cannot find name 'AsyncIterable'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2018' or later.\r\nnode_modules/@tanstack/query...",
+  "timestamp": "2026-04-14T05:49:43.534Z",
+  "retry_count": 1
+}

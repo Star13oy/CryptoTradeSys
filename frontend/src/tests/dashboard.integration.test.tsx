@@ -6,10 +6,20 @@ import { renderWithProviders } from "./render-with-providers";
 test("dashboard page shows loading state before rendering a fetched opportunity row", async () => {
   let resolveFetch: ((value: Response) => void) | undefined;
 
-  (globalThis as { fetch: typeof fetch }).fetch = (async () =>
-    new Promise<Response>((resolve) => {
+  (globalThis as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    // Account and safety endpoints return immediately
+    if (url.includes("/api/v1/account")) {
+      return { ok: true, json: async () => ({ balance: null, positions: [], active_position_count: 0, fetched_at: "2026-04-03T12:00:00Z" }) } as Response;
+    }
+    if (url.includes("/api/v1/safety")) {
+      return { ok: true, json: async () => ({ frozen: false, new_positions_allowed: true, reduce_only_trades: [], paused_trades: [], updated_at: "2026-04-03T12:00:00Z" }) } as Response;
+    }
+    // Dashboard summary waits for manual resolve
+    return new Promise<Response>((resolve) => {
       resolveFetch = resolve;
-    })) as typeof fetch;
+    });
+  }) as typeof fetch;
 
   renderWithProviders(<DashboardPage />);
 

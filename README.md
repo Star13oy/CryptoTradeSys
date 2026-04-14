@@ -22,8 +22,12 @@
 - 支持 `paper` 与 `live` 共用的交易账本和审计事件
 - 支持执行编排、恢复计划、对账同步、补偿计划
 - 支持对冲健康度分类、自动再平衡 worker、单笔一键再平衡
-- 提供 7 个控制台页面，便于观察机会、持仓、风险和审计状态
+- 提供 9 个控制台页面，便于观察机会、持仓、风险和审计状态
 - 支持 `JSON` 本地持久化，也支持切换到 `MySQL`
+- **用户认证系统（JWT）**：支持用户注册、登录、密码修改
+- **API 密钥管理**：安全的 Binance API Key 加密存储与管理
+- **手动下单功能**：支持币对选择、方向切换、预览与执行
+- **一键开仓**：扫描页直接下单功能
 
 如果你要看更细的实现演进，请去看进度文档，而不是把 README 当 changelog：
 
@@ -68,16 +72,25 @@ docs/superpowers/plans/   阶段计划与进度文档
 - `backend/app/compensation/`：补偿计划与补偿 worker
 - `backend/app/hedge/`：对冲健康度、再平衡计划与再平衡 worker
 - `backend/app/persistence/`：JSON / MySQL 持久化与回填
+- `backend/app/auth/`：用户认证与授权（JWT）
+- `backend/app/credentials/`：API 密钥加密存储管理
+- `backend/app/trading/`：手动下单与交易预览
+- `backend/app/safety/`：安全控制（冻结、停止开仓等）
+- `backend/app/scheduler/`：策略调度 worker
+- `backend/app/monitor/`：持仓监控 worker
 
 前端页面：
 
+- `/login`：登录页
 - `/`：总览指挥台
-- `/scan`：机会扫描页
+- `/scan`：机会扫描页（支持一键开仓）
 - `/positions`：持仓监控
 - `/risk`：风控中心
 - `/backtest`：回测实验室
 - `/models`：模型工作台
 - `/audit`：审计与日志中心
+- `/settings`：系统设置（API 密钥管理）
+- `/trade`：交易下单（手动下单面板）
 
 ## 快速开始
 
@@ -116,13 +129,16 @@ npm run dev
 
 启动后可访问：
 
+- [登录页](http://127.0.0.1:5173/login)（默认账号：`admin` / `admin`）
 - [总览指挥台](http://127.0.0.1:5173/)
-- [机会扫描页](http://127.0.0.1:5173/scan)
+- [机会扫描页](http://127.0.0.1:5173/scan)（支持一键开仓）
 - [持仓监控](http://127.0.0.1:5173/positions)
 - [风控中心](http://127.0.0.1:5173/risk)
 - [回测实验室](http://127.0.0.1:5173/backtest)
 - [模型工作台](http://127.0.0.1:5173/models)
 - [审计与日志中心](http://127.0.0.1:5173/audit)
+- [系统设置](http://127.0.0.1:5173/settings)（API 密钥管理）
+- [交易下单](http://127.0.0.1:5173/trade)（手动下单）
 
 ## 最小运行配置
 

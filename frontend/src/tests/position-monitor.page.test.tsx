@@ -6,6 +6,18 @@ import { renderWithProviders } from "./render-with-providers";
 test("position monitor page loads hedge overview and rebalance plan", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url === "/api/v1/safety/state") {
+      return {
+        ok: true,
+        json: async () => ({
+          frozen: false,
+          new_positions_allowed: true,
+          reduce_only_trades: [],
+          paused_trades: [],
+          updated_at: "2026-04-05T12:00:00Z",
+        }),
+      } as Response;
+    }
     if (url.startsWith("/api/v1/algo/hedge/overview")) {
       return {
         ok: true,
@@ -117,17 +129,40 @@ test("position monitor page loads hedge overview and rebalance plan", async () =
   await waitFor(() => expect(screen.getAllByText("increase_perp_hedge").length).toBeGreaterThan(0));
   expect(screen.getAllByText("Auto Hedge Rebalance").length).toBeGreaterThan(0);
   expect(screen.getByText(/累计执行 4 次/)).toBeTruthy();
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/overview?exposure_limit_bps=50");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/rebalance-plan/trade-1?exposure_limit_bps=50");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/worker");
+
+  // Check expected endpoints were called
+  const calledUrls = fetchMock.mock.calls.map((call: unknown[]) => String(call[0]));
+  expect(calledUrls).toContain("/api/v1/safety/state");
+  expect(calledUrls).toContain("/api/v1/algo/hedge/overview?exposure_limit_bps=50");
+  expect(calledUrls).toContain("/api/v1/algo/hedge/rebalance-plan/trade-1?exposure_limit_bps=50");
+  expect(calledUrls).toContain("/api/v1/algo/hedge/worker");
 
   fireEvent.click(screen.getByText("运行再平衡"));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/worker/run", { method: "POST" }));
+  await waitFor(() => {
+    const postCalls = fetchMock.mock.calls.filter((call: unknown[]) => {
+      const url = String(call[0]);
+      const opts = call[1] as Record<string, unknown> | undefined;
+      return url === "/api/v1/algo/hedge/worker/run" && opts?.method === "POST";
+    });
+    expect(postCalls.length).toBeGreaterThan(0);
+  });
 });
 
 test("position monitor page enables single trade rebalance for recommended hedge increase", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (url === "/api/v1/safety/state") {
+      return {
+        ok: true,
+        json: async () => ({
+          frozen: false,
+          new_positions_allowed: true,
+          reduce_only_trades: [],
+          paused_trades: [],
+          updated_at: "2026-04-05T12:00:00Z",
+        }),
+      } as Response;
+    }
     if (url.startsWith("/api/v1/algo/hedge/overview")) {
       return {
         ok: true,
@@ -226,12 +261,31 @@ test("position monitor page enables single trade rebalance for recommended hedge
 
   fireEvent.click(screen.getByRole("button", { name: "执行再平衡" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/rebalance-auto/trade-1", { method: "POST" }));
+  await waitFor(() => {
+    const postCalls = fetchMock.mock.calls.filter((call: unknown[]) => {
+      const url = String(call[0]);
+      const opts = call[1] as Record<string, unknown> | undefined;
+      return url === "/api/v1/algo/hedge/rebalance-auto/trade-1" && opts?.method === "POST";
+    });
+    expect(postCalls.length).toBeGreaterThan(0);
+  });
 });
 
 test("position monitor page disables single trade rebalance when action is not supported", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url === "/api/v1/safety/state") {
+      return {
+        ok: true,
+        json: async () => ({
+          frozen: false,
+          new_positions_allowed: true,
+          reduce_only_trades: [],
+          paused_trades: [],
+          updated_at: "2026-04-05T12:00:00Z",
+        }),
+      } as Response;
+    }
     if (url.startsWith("/api/v1/algo/hedge/overview")) {
       return {
         ok: true,

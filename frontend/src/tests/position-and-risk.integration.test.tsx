@@ -7,6 +7,9 @@ import { renderWithProviders } from "./render-with-providers";
 test("position monitor page loads hedge overview and rebalance plan", async () => {
   (globalThis as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.includes("/api/v1/safety")) {
+      return { ok: true, json: async () => ({ frozen: false, new_positions_allowed: true, reduce_only_trades: [], paused_trades: [], updated_at: "2026-04-05T12:00:00Z" }) } as Response;
+    }
     if (url.includes("/api/v1/algo/hedge/overview")) {
       return {
         ok: true,

@@ -9,6 +9,7 @@ import type {
   ReconciliationCandidateListResponse,
   ReconciliationWorkerStatus,
   RecoveryWorkerStatus,
+  SafetyStateSnapshot,
 } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
@@ -124,6 +125,11 @@ export function RiskCenterPage() {
     queryKey: ["compensation-worker"],
     queryFn: () => apiClient.getCompensationWorker<CompensationWorkerStatus>(),
   });
+  const safetyQuery = useQuery<SafetyStateSnapshot>({
+    queryKey: ["safety-state"],
+    queryFn: () => apiClient.getSafetyState<SafetyStateSnapshot>(),
+    staleTime: 10_000,
+  });
   const reconciliationWorkerRunMutation = useMutation({
     mutationFn: () => apiClient.runReconciliationWorker<ReconciliationWorkerStatus>(),
     onSuccess: async () => {
@@ -147,6 +153,22 @@ export function RiskCenterPage() {
     onSuccess: async () => {
       await circuitBreakerQuery.refetch();
     },
+  });
+  const freezeMutation = useMutation({
+    mutationFn: () => apiClient.freezeAll<SafetyStateSnapshot>(),
+    onSuccess: () => safetyQuery.refetch(),
+  });
+  const unfreezeMutation = useMutation({
+    mutationFn: () => apiClient.unfreezeAll<SafetyStateSnapshot>(),
+    onSuccess: () => safetyQuery.refetch(),
+  });
+  const stopNewMutation = useMutation({
+    mutationFn: () => apiClient.stopNewPositions<SafetyStateSnapshot>(),
+    onSuccess: () => safetyQuery.refetch(),
+  });
+  const resumeNewMutation = useMutation({
+    mutationFn: () => apiClient.resumeNewPositions<SafetyStateSnapshot>(),
+    onSuccess: () => safetyQuery.refetch(),
   });
 
   const summary = summaryQuery.data;
@@ -241,17 +263,44 @@ export function RiskCenterPage() {
   return (
     <TerminalLayout activePath="/risk" footerContent={footerContent}>
       <section className="proto-page">
+        {safetyQuery.data?.frozen && (
+          <div style={{ background: "#ff4444", color: "white", padding: "8px 16px", textAlign: "center", fontWeight: "bold", marginBottom: "8px" }}>
+            ⚠ 账户已冻结 — 所有交易已停止
+          </div>
+        )}
         <header className="proto-header">
           <div>
             <h2 className="proto-page__title">风控中心</h2>
             <p className="proto-page__subtitle">系统级风险监控与实时干预工作台</p>
           </div>
           <div className="proto-header__actions">
-            <button className="proto-button proto-button--danger" type="button">
-              全账户冻结
+            <button
+              className={`proto-button ${safetyQuery.data?.frozen ? "proto-button--ghost" : "proto-button--danger"}`}
+              type="button"
+              onClick={() => {
+                if (safetyQuery.data?.frozen) {
+                  if (window.confirm("确认解除账户冻结？")) unfreezeMutation.mutate();
+                } else {
+                  if (window.confirm("确认冻结所有账户？所有交易将立即停止！")) freezeMutation.mutate();
+                }
+              }}
+              disabled={freezeMutation.isPending || unfreezeMutation.isPending}
+            >
+              {freezeMutation.isPending || unfreezeMutation.isPending ? "操作中..." : safetyQuery.data?.frozen ? "解除冻结" : "全账户冻结"}
             </button>
-            <button className="proto-button proto-button--ghost" type="button">
-              停止新开仓
+            <button
+              className="proto-button proto-button--ghost"
+              type="button"
+              onClick={() => {
+                if (!safetyQuery.data?.new_positions_allowed) {
+                  resumeNewMutation.mutate();
+                } else {
+                  stopNewMutation.mutate();
+                }
+              }}
+              disabled={stopNewMutation.isPending || resumeNewMutation.isPending}
+            >
+              {stopNewMutation.isPending || resumeNewMutation.isPending ? "操作中..." : safetyQuery.data?.new_positions_allowed ? "停止新开仓" : "恢复新开仓"}
             </button>
           </div>
         </header>

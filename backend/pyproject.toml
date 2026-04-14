@@ -12,6 +12,8 @@ dependencies = [
   "pydantic-settings>=2.6,<3",
   "httpx>=0.28,<1",
   "PyMySQL>=1.1,<2",
+  "bcrypt>=4.0,<5",
+  "pyjwt>=2.8,<3",
 ]
 
 [project.optional-dependencies]
@@ -24,3 +26,9 @@ addopts = "-p no:cacheprovider"
 [tool.setuptools.packages.find]
 include = ["app*"]
 exclude = ["backend*", "tests*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.3.0",
+]

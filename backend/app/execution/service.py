@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 from app.audit import AuditEventRecord, AuditEventService
 from app.ledger import TradeLedgerRecord, TradeLedgerService
@@ -9,6 +10,9 @@ from app.ledger import TradeLedgerRecord, TradeLedgerService
 from .adapters import BinanceLiveExecutionAdapter
 from .circuit_breaker import ExecutionCircuitBreakerService
 from .schemas import ExecutionIntentRequest, ExecutionLegReport, ExecutionRecoveryRequest, ExecutionResult
+
+if TYPE_CHECKING:
+    from app.safety.service import SafetyService
 
 
 class ExecutionOrchestrator:
@@ -18,6 +22,7 @@ class ExecutionOrchestrator:
         audit_service: AuditEventService | None = None,
         live_adapter: BinanceLiveExecutionAdapter | None = None,
         circuit_breaker: ExecutionCircuitBreakerService | None = None,
+        safety_service: SafetyService | None = None,
         *,
         live_execution_enabled: bool = False,
         live_symbol_allowlist: set[str] | None = None,
@@ -27,6 +32,7 @@ class ExecutionOrchestrator:
         self._audit_service = audit_service or AuditEventService()
         self._live_adapter = live_adapter
         self._circuit_breaker = circuit_breaker
+        self._safety_service = safety_service
         self._live_execution_enabled = live_execution_enabled
         self._live_symbol_allowlist = live_symbol_allowlist or set()
         self._max_live_notional = max_live_notional
@@ -36,6 +42,14 @@ class ExecutionOrchestrator:
         idempotent = self._handle_idempotent_replay(request, occurred_at)
         if idempotent is not None:
             return idempotent
+
+        # Safety gate
+        if self._safety_service is not None:
+            if request.action == "open_hedge":
+                self._safety_service.check_can_open()
+            else:
+                self._safety_service.check_can_operate(trade_id=request.trade_id)
+
         if request.mode == "live":
             self._validate_live_request(request)
             self._ensure_live_execution_allowed(request, occurred_at)

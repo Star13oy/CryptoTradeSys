@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
 import type {
+  EmergencyCloseResult,
   HedgeOverviewItem,
   HedgeOverviewResponse,
   HedgeRebalancePlan,
   HedgeRebalanceWorkerStatus,
+  SafetyStateSnapshot,
 } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
@@ -137,6 +139,11 @@ export function PositionMonitorPage() {
     queryKey: ["hedge-rebalance-worker"],
     queryFn: () => apiClient.getHedgeRebalanceWorker<HedgeRebalanceWorkerStatus>(),
   });
+  const safetyQuery = useQuery<SafetyStateSnapshot>({
+    queryKey: ["safety-state"],
+    queryFn: () => apiClient.getSafetyState<SafetyStateSnapshot>(),
+    staleTime: 10_000,
+  });
   const hedgeWorkerRunMutation = useMutation({
     mutationFn: () => apiClient.runHedgeRebalanceWorker<HedgeRebalanceWorkerStatus>(),
     onSuccess: async () => {
@@ -152,6 +159,21 @@ export function PositionMonitorPage() {
     },
     onSuccess: async () => {
       await Promise.all([overviewQuery.refetch(), rebalancePlanQuery.refetch()]);
+    },
+  });
+  const reduceOnlyMutation = useMutation({
+    mutationFn: () => apiClient.setReduceOnly<SafetyStateSnapshot>({ trade_id: selectedTradeId ?? undefined }),
+    onSuccess: () => safetyQuery.refetch(),
+  });
+  const pauseMutation = useMutation({
+    mutationFn: () => apiClient.pauseTrade<SafetyStateSnapshot>({ trade_id: selectedTradeId ?? undefined }),
+    onSuccess: () => safetyQuery.refetch(),
+  });
+  const panicSellMutation = useMutation({
+    mutationFn: () => apiClient.panicSell<EmergencyCloseResult>({ trade_id: selectedTradeId ?? undefined }),
+    onSuccess: () => {
+      safetyQuery.refetch();
+      overviewQuery.refetch();
     },
   });
 
@@ -249,7 +271,15 @@ export function PositionMonitorPage() {
                     <span className="proto-meta">{row.exposure_bps.toFixed(2)} bps</span>
                   </div>
                   <span className="proto-pill">{row.mode.toUpperCase()}</span>
-                  <span>{healthLabel(row.health)}</span>
+                  <span>
+                    {healthLabel(row.health)}
+                    {safetyQuery.data?.reduce_only_trades.includes(row.trade_id) && (
+                      <span className="proto-chip proto-chip--active" style={{ marginLeft: "4px" }}>仅减仓</span>
+                    )}
+                    {safetyQuery.data?.paused_trades.includes(row.trade_id) && (
+                      <span className="proto-chip proto-chip--active" style={{ marginLeft: "4px" }}>已暂停</span>
+                    )}
+                  </span>
                   <div>
                     <strong className="proto-text--accent">
                       {selectedTradeId === row.trade_id && rebalancePlanQuery.data
@@ -291,11 +321,21 @@ export function PositionMonitorPage() {
               </div>
 
               <div className="proto-action-grid">
-                <button className="proto-button proto-button--ghost" type="button">
-                  仅减仓
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => reduceOnlyMutation.mutate()}
+                  disabled={!selectedTradeId || reduceOnlyMutation.isPending}
+                >
+                  {reduceOnlyMutation.isPending ? "设置中..." : "仅减仓"}
                 </button>
-                <button className="proto-button proto-button--ghost" type="button">
-                  暂停
+                <button
+                  className="proto-button proto-button--ghost"
+                  type="button"
+                  onClick={() => pauseMutation.mutate()}
+                  disabled={!selectedTradeId || pauseMutation.isPending}
+                >
+                  {pauseMutation.isPending ? "暂停中..." : "暂停"}
                 </button>
                 <button
                   className="proto-button proto-button--accent"
@@ -305,8 +345,17 @@ export function PositionMonitorPage() {
                 >
                   {manualRebalanceMutation.isPending ? "执行中..." : "执行再平衡"}
                 </button>
-                <button className="proto-button proto-button--danger" type="button">
-                  立即强平 (Panic Sell)
+                <button
+                  className="proto-button proto-button--danger"
+                  type="button"
+                  onClick={() => {
+                    if (selectedTradeId && window.confirm(`确认强制平仓 ${selectedTradeId}？此操作不可撤销！`)) {
+                      panicSellMutation.mutate();
+                    }
+                  }}
+                  disabled={!selectedTradeId || panicSellMutation.isPending}
+                >
+                  {panicSellMutation.isPending ? "平仓中..." : "立即强平 (Panic Sell)"}
                 </button>
               </div>
             </article>

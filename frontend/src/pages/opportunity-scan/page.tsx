@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { apiGet } from "../../shared/api/client";
-import type { ScanOpportunitiesResponse } from "../../shared/contracts/console";
+import type { ScanOpportunitiesResponse, OrderResult } from "../../shared/contracts/console";
 import { TerminalLayout } from "../../shared/ui/terminal-layout";
 
 const timeFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -86,6 +86,19 @@ export function OpportunityScanPage() {
 
   const selectedThreshold = apyThresholdOptions.find((option) => option.value === annualizedThreshold);
   const minNetEdgeBps = selectedThreshold?.minNetEdgeBps;
+
+  const quickOpenMutation = useMutation({
+    mutationFn: (symbol: string) =>
+      apiGet<OrderResult>("/api/v1/trading/execute", {
+        symbol,
+        side: "long",
+        notional: 1000,
+        mode: "paper",
+      }),
+    onSuccess: () => {
+      // Could show a success message or refresh positions
+    },
+  });
 
   const scanQuery = useQuery({
     queryKey: ["scan-opportunities", limit, minNetEdgeBps ?? null],
@@ -288,6 +301,7 @@ export function OpportunityScanPage() {
                 <span>净边际</span>
                 <span>风险评分</span>
                 <span>状态</span>
+                <span>操作</span>
               </div>
 
               {!scanQuery.isPending && !scanQuery.isError && filteredRows.length === 0 ? (
@@ -317,6 +331,24 @@ export function OpportunityScanPage() {
                   <span>{row.score.toFixed(1)}</span>
                   <span className="scanner-table__status">
                     {row.net_edge_bps >= 2 ? "优先开仓" : row.net_edge_bps >= 1 ? "观察" : "继续跟踪"}
+                  </span>
+                  <span>
+                    {row.risk_tag !== "blocked" ? (
+                      <button
+                        className="proto-button proto-button--primary"
+                        type="button"
+                        style={{ fontSize: 12, padding: "4px 12px" }}
+                        disabled={quickOpenMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`确认开仓 ${formatSymbol(row.symbol)}？名义金额 $1000`)) {
+                            quickOpenMutation.mutate(row.symbol);
+                          }
+                        }}
+                      >
+                        {quickOpenMutation.isPending ? "开仓中..." : "开仓"}
+                      </button>
+                    ) : null}
                   </span>
                 </button>
               ))}

@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     hedge_rebalance_worker_interval_seconds: float = 30.0
     hedge_rebalance_worker_limit: int = 3
     hedge_rebalance_worker_exposure_limit_bps: float = 50.0
+    holding_monitor_enabled: bool = False
+    holding_monitor_interval_seconds: float = 60.0
+    holding_monitor_max_hold_periods: float = 72.0
+    scheduler_enabled: bool = False
+    scheduler_interval_seconds: float = 60.0
+    scheduler_max_open_positions: int = 3
+    scheduler_max_total_notional: float = 25000.0
     scan_limit: int = 25
     storage_backend: Literal["json", "mysql"] = "json"
     mysql_host: str = "127.0.0.1"
@@ -49,6 +56,10 @@ class Settings(BaseSettings):
     audit_event_path: str = "backend/runtime/audit-events.json"
     exchange_order_report_path: str = "backend/runtime/exchange-order-reports.json"
     execution_circuit_breaker_state_path: str = "backend/runtime/execution-circuit-breaker.json"
+    users_path: str = "backend/runtime/users.json"
+    credentials_path: str = "backend/runtime/credentials.json"
+    jwt_secret: str = "change-me-in-production"
+    encryption_key: str = ""
 
 
 @lru_cache

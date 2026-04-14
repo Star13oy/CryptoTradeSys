@@ -112,6 +112,22 @@ class BinanceTradingClient:
             payload["recvWindow"] = str(recv_window)
         return self._signed_get(f"{self._perp_base_url}/fapi/v1/order", payload)
 
+    def get_account_balance(self, *, recv_window: int | None = None) -> list[dict]:
+        """GET /fapi/v3/balance — returns futures account balances."""
+        payload: dict[str, str] = {}
+        if recv_window is not None:
+            payload["recvWindow"] = str(recv_window)
+        return self._signed_get(f"{self._perp_base_url}/fapi/v3/balance", payload)
+
+    def get_position_info(self, symbol: str | None = None, *, recv_window: int | None = None) -> list[dict]:
+        """GET /fapi/v2/positionRisk — returns position risk information."""
+        payload: dict[str, str] = {}
+        if symbol is not None:
+            payload["symbol"] = symbol
+        if recv_window is not None:
+            payload["recvWindow"] = str(recv_window)
+        return self._signed_get(f"{self._perp_base_url}/fapi/v2/positionRisk", payload)
+
     def _signed_post(self, url: str, payload: dict[str, str]) -> dict:
         if not self._api_key or not self._api_secret:
             raise ValueError("binance api credentials are not configured")

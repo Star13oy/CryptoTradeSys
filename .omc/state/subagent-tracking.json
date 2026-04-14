@@ -1,0 +1,71 @@
+{
+  "agents": [
+    {
+      "agent_id": "ab6daaa5c101c1369",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T03:29:21.413Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:16:15.316Z",
+      "duration_ms": 6413903
+    },
+    {
+      "agent_id": "a3bc58098ef12a0a3",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T05:17:12.224Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:19:13.491Z",
+      "duration_ms": 121267
+    },
+    {
+      "agent_id": "af5d494458f8db031",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T05:17:12.521Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:18:48.827Z",
+      "duration_ms": 96306
+    },
+    {
+      "agent_id": "a585ea263477cd518",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T05:17:12.649Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:19:26.772Z",
+      "duration_ms": 134123
+    },
+    {
+      "agent_id": "a502d50f6db84f6c3",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T05:38:14.695Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:43:16.122Z",
+      "duration_ms": 301427
+    },
+    {
+      "agent_id": "af50b1aafea761815",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T05:38:15.205Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:41:49.651Z",
+      "duration_ms": 214446
+    },
+    {
+      "agent_id": "a74d6f363a9a1f6ba",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T05:46:42.174Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T05:50:14.627Z",
+      "duration_ms": 212453
+    }
+  ],
+  "total_spawned": 7,
+  "total_completed": 7,
+  "total_failed": 0,
+  "last_updated": "2026-04-14T05:50:14.748Z"
+}

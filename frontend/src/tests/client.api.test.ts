@@ -1,5 +1,10 @@
 import { apiClient } from "../shared/api/client";
 
+// Clear localStorage to ensure no auth token interferes with tests
+beforeEach(() => {
+  localStorage.clear();
+});
+
 test("api client requests hedge overview with exposure_limit_bps", async () => {
   const fetchMock = vi.fn(async () =>
     ({
@@ -11,7 +16,7 @@ test("api client requests hedge overview with exposure_limit_bps", async () => {
 
   await apiClient.getHedgeOverview({ exposure_limit_bps: 75 });
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/overview?exposure_limit_bps=75");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/overview?exposure_limit_bps=75", { headers: {} });
 });
 
 test("api client requests rebalance plan with encoded trade_id", async () => {
@@ -25,7 +30,7 @@ test("api client requests rebalance plan with encoded trade_id", async () => {
 
   await apiClient.getHedgeRebalancePlan("trade/a b", { exposure_limit_bps: 60 });
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/rebalance-plan/trade%2Fa%20b?exposure_limit_bps=60");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/rebalance-plan/trade%2Fa%20b?exposure_limit_bps=60", { headers: {} });
 });
 
 test("api client requests hedge rebalance worker status", async () => {
@@ -39,7 +44,7 @@ test("api client requests hedge rebalance worker status", async () => {
 
   await apiClient.getHedgeRebalanceWorker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/worker");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/worker", { headers: {} });
 });
 
 test("api client posts hedge rebalance worker run", async () => {
@@ -53,7 +58,7 @@ test("api client posts hedge rebalance worker run", async () => {
 
   await apiClient.runHedgeRebalanceWorker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/worker/run", { method: "POST" });
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/worker/run", { headers: {}, method: "POST" });
 });
 
 test("api client posts single trade hedge rebalance execution", async () => {
@@ -67,7 +72,7 @@ test("api client posts single trade hedge rebalance execution", async () => {
 
   await apiClient.runHedgeRebalanceAuto("trade-1");
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/rebalance-auto/trade-1", { method: "POST" });
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/hedge/rebalance-auto/trade-1", { headers: {}, method: "POST" });
 });
 
 test("api client requests execution summary with incident limit", async () => {
@@ -81,7 +86,7 @@ test("api client requests execution summary with incident limit", async () => {
 
   await apiClient.getExecutionSummary({ limit_incidents: 8 });
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=8");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=8", { headers: {} });
 });
 
 test("api client requests reconciliation candidates", async () => {
@@ -95,7 +100,7 @@ test("api client requests reconciliation candidates", async () => {
 
   await apiClient.getReconciliationCandidates();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates", { headers: {} });
 });
 
 test("api client requests compensation plans", async () => {
@@ -109,7 +114,7 @@ test("api client requests compensation plans", async () => {
 
   await apiClient.getCompensationPlans({ only_actionable: true, exposure_limit_bps: 75 });
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/plans?only_actionable=true&exposure_limit_bps=75");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/plans?only_actionable=true&exposure_limit_bps=75", { headers: {} });
 });
 
 test("api client requests compensation worker status", async () => {
@@ -123,7 +128,7 @@ test("api client requests compensation worker status", async () => {
 
   await apiClient.getCompensationWorker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker");
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker", { headers: {} });
 });
 
 test("api client posts compensation worker run", async () => {
@@ -137,7 +142,7 @@ test("api client posts compensation worker run", async () => {
 
   await apiClient.runCompensationWorker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker/run", { method: "POST" });
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker/run", { headers: {}, method: "POST" });
 });
 
 test("api client posts recovery worker run", async () => {
@@ -151,7 +156,7 @@ test("api client posts recovery worker run", async () => {
 
   await apiClient.runRecoveryWorker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/recovery/worker/run", { method: "POST" });
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/recovery/worker/run", { headers: {}, method: "POST" });
 });
 
 test("api client posts reconciliation worker run", async () => {
@@ -165,7 +170,7 @@ test("api client posts reconciliation worker run", async () => {
 
   await apiClient.runReconciliationWorker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/worker/run", { method: "POST" });
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/worker/run", { headers: {}, method: "POST" });
 });
 
 test("api client posts execution circuit breaker reset", async () => {
@@ -179,5 +184,5 @@ test("api client posts execution circuit breaker reset", async () => {
 
   await apiClient.resetExecutionCircuitBreaker();
 
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/circuit-breaker/reset", { method: "POST" });
+  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/circuit-breaker/reset", { headers: {}, method: "POST" });
 });

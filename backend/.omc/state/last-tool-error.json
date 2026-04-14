@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"taskkill //F //PID 26284 2>&1\",\"description\":\"Kill remaining process\"}",
+  "error": "Exit code 128\n����: û���ҵ����� \"26284\"��",
+  "timestamp": "2026-04-14T06:58:40.067Z",
+  "retry_count": 1
+}

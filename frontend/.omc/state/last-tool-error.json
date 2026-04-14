@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd d:/code/crypto/CryptoTradeSys/frontend && npm run test 2>&1\",\"timeout\":60000,\"description\":\"Run frontend tests after fixing mocks\"}",
+  "error": "Exit code 1\n\n> crypto-funding-arb-frontend@0.1.0 test\n> vitest run\n\n\n\u001b[1m\u001b[7m\u001b[36m RUN \u001b[39m\u001b[27m\u001b[22m \u001b[36mv2.1.9 \u001b[39m\u001b[90mD:/code/crypto/CryptoTradeSys/frontend\u001b[39m\n\n \u001b[32m✓\u001b[39m src/tests/client.api.test.ts \u001b[2m(\u001b[22m\u001b[2m13 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[90m 30\u001b[2mms\u001b[22m\u001b[39m\n \u001b[32m✓\u001b[39m src/tests/risk-center.page.test.tsx \u001b[2m(\u001b[22m\u001b[2m1 test\u001b[22m\u001b[2m)\u001b[22m\u001b[33m 825\u001b[2mms\u001b[22m\u001b[39m\n   \u001b[33m\u001b[2m✓\u001b[22m\u001b[39m risk center page loads execution summary \u001b[33m821\u001b[2mms\u001b[22m\u001b[39m\n \u001b[32m✓\u001b[39m src/tests/pos...",
+  "timestamp": "2026-04-14T02:01:41.312Z",
+  "retry_count": 1
+}

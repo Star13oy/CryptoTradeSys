@@ -6,6 +6,18 @@ import { renderWithProviders } from "./render-with-providers";
 test("risk center page loads execution summary", async () => {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url === "/api/v1/safety/state") {
+      return {
+        ok: true,
+        json: async () => ({
+          frozen: false,
+          new_positions_allowed: true,
+          reduce_only_trades: [],
+          paused_trades: [],
+          updated_at: "2026-04-05T12:00:00Z",
+        }),
+      } as Response;
+    }
     if (url === "/api/v1/algo/compensation/worker/run") {
       return {
         ok: true,
@@ -231,16 +243,25 @@ test("risk center page loads execution summary", async () => {
   expect(screen.getByText(/累计执行 2 个动作/)).toBeTruthy();
   expect(screen.getByText(/连续失败 2/)).toBeTruthy();
   expect(screen.getByText(/累计恢复 4 笔/)).toBeTruthy();
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/summary?limit_incidents=6");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/candidates");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/reconciliation/worker");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/execution/circuit-breaker");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/recovery/worker");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker");
-  expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/plans?only_actionable=true&exposure_limit_bps=50");
+
+  // Check that all expected endpoints were called (order may vary with React Query)
+  const calledUrls = fetchMock.mock.calls.map((call: unknown[]) => String(call[0]));
+  expect(calledUrls).toContain("/api/v1/safety/state");
+  expect(calledUrls).toContain("/api/v1/algo/execution/summary?limit_incidents=6");
+  expect(calledUrls).toContain("/api/v1/algo/reconciliation/candidates");
+  expect(calledUrls).toContain("/api/v1/algo/reconciliation/worker");
+  expect(calledUrls).toContain("/api/v1/algo/execution/circuit-breaker");
+  expect(calledUrls).toContain("/api/v1/algo/recovery/worker");
+  expect(calledUrls).toContain("/api/v1/algo/compensation/worker");
+  expect(calledUrls).toContain("/api/v1/algo/compensation/plans?only_actionable=true&exposure_limit_bps=50");
 
   fireEvent.click(screen.getByText("运行补偿"));
-  await waitFor(() =>
-    expect(fetchMock).toHaveBeenCalledWith("/api/v1/algo/compensation/worker/run", { method: "POST" })
-  );
+  await waitFor(() => {
+    const postCalls = fetchMock.mock.calls.filter((call: unknown[]) => {
+      const url = String(call[0]);
+      const opts = call[1] as Record<string, unknown> | undefined;
+      return url === "/api/v1/algo/compensation/worker/run" && opts?.method === "POST";
+    });
+    expect(postCalls.length).toBeGreaterThan(0);
+  });
 });

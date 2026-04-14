@@ -284,3 +284,351 @@ export type ExecutionSummaryResponse = {
   recovery_queue: ExecutionRecoveryQueueItem[];
   recent_incidents: ExecutionIncident[];
 };
+
+// --- Backtest ---
+
+export type BacktestConfig = {
+  notional_per_trade: number;
+  min_score: number;
+  min_net_edge_bps: number;
+  top_k: number;
+  accept_reviewed: boolean;
+  strategy_id?: string | null;
+};
+
+export type BacktestTrade = {
+  period_index: number;
+  observed_at: string | null;
+  symbol: string;
+  funding_rate: number;
+  score: number;
+  net_edge_bps: number;
+  projected_net_edge_bps: number;
+  estimated_pnl: number;
+  risk_tag: string;
+  risk_decision: string;
+  position_fraction: number;
+  reasons: string[];
+};
+
+export type BacktestResult = {
+  periods_processed: number;
+  candidates_seen: number;
+  selected_trades: number;
+  estimated_total_pnl: number;
+  average_score: number;
+  average_net_edge_bps: number;
+  average_projected_edge_bps: number;
+  trades: BacktestTrade[];
+};
+
+export type BacktestDatasetSummary = {
+  dataset_id: string;
+  title: string;
+  source: string;
+  description: string | null;
+  imported_at: string;
+  period_count: number;
+  snapshot_count: number;
+  observed_from: string | null;
+  observed_to: string | null;
+};
+
+export type BacktestDatasetListResponse = {
+  datasets: BacktestDatasetSummary[];
+};
+
+// --- Adaptation (Model Workbench) ---
+
+export type ScoreConfigSnapshot = {
+  taker_fee_bps: number;
+  funding_periods_per_day: number;
+  expected_hold_periods: number;
+  basis_soft_limit_bps: number;
+  basis_guarded_bps: number;
+  payback_guarded_periods: number;
+  trading_cost_guarded_bps: number;
+  carry_weight: number;
+  annualized_weight: number;
+  cost_soft_limit_bps: number;
+  cost_penalty_weight: number;
+  basis_penalty_weight: number;
+};
+
+export type RiskConfigSnapshot = {
+  min_allow_score: number;
+  min_review_score: number;
+  min_allow_net_edge_bps: number;
+  min_allow_projected_edge_bps: number;
+  max_allow_basis_bps: number;
+  max_review_basis_bps: number;
+  max_allow_trading_cost_bps: number;
+  max_allow_payback_periods: number;
+};
+
+export type TuningConfig = {
+  score: ScoreConfigSnapshot;
+  risk: RiskConfigSnapshot;
+  backtest: BacktestConfig;
+};
+
+export type TuningState = {
+  updated_at: string;
+  active_package_id: string;
+  active_package_title: string;
+  config: TuningConfig;
+};
+
+export type LearningTradeSample = {
+  trade_id: string | null;
+  symbol: string;
+  closed_at: string | null;
+  score: number;
+  risk_tag: string;
+  net_edge_bps: number;
+  projected_net_edge_bps: number;
+  basis_bps: number;
+  realized_pnl_bps: number;
+  max_drawdown_bps: number;
+  hold_periods: number;
+};
+
+export type AdaptationMetrics = {
+  trade_count: number;
+  win_rate: number;
+  avg_realized_pnl_bps: number;
+  avg_projected_edge_bps: number;
+  avg_projection_shortfall_bps: number;
+  max_drawdown_p95_bps: number;
+  slow_payback_rate: number;
+};
+
+export type TuningPackage = {
+  package_id: string;
+  title: string;
+  summary: string;
+  objective: string;
+  recommended: boolean;
+  derived_from: string | null;
+  reason_codes: string[];
+  config: TuningConfig;
+};
+
+export type AdaptationRecommendationResponse = {
+  generated_at: string;
+  metrics: AdaptationMetrics;
+  current_state: TuningState;
+  recommended_package_id: string;
+  packages: TuningPackage[];
+};
+
+export type PackageBacktestEvaluation = {
+  package_id: string;
+  title: string;
+  recommended: boolean;
+  estimated_total_pnl: number;
+  selected_trades: number;
+  average_score: number;
+  average_projected_edge_bps: number;
+  reason_codes: string[];
+};
+
+export type AdaptationPackageEvaluationResponse = {
+  dataset_id: string;
+  metrics: AdaptationMetrics;
+  recommended_package_id: string;
+  evaluations: PackageBacktestEvaluation[];
+};
+
+export type LearningSampleListResponse = {
+  samples: LearningTradeSample[];
+};
+
+export type LearningSampleImportResponse = {
+  imported_samples: number;
+  total_samples: number;
+};
+
+// --- Audit ---
+
+export type AuditEventRecord = {
+  event_id: string;
+  event_type: string;
+  severity: "debug" | "info" | "warning" | "error" | "critical";
+  source: string;
+  occurred_at: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  tags: string[];
+};
+
+export type AuditEventListResponse = {
+  events: AuditEventRecord[];
+};
+
+export type AuditEventImportResponse = {
+  imported_events: number;
+  total_events: number;
+};
+
+// --- Safety ---
+
+export type SafetyStateSnapshot = {
+  frozen: boolean;
+  new_positions_allowed: boolean;
+  reduce_only_trades: string[];
+  paused_trades: string[];
+  updated_at: string;
+};
+
+export type EmergencyCloseResult = {
+  closed_count: number;
+  failed_count: number;
+  skipped_count: number;
+  results: Array<Record<string, unknown>>;
+};
+
+export type SafetyActionRequest = {
+  trade_id?: string;
+  reason?: string;
+};
+
+// --- Account ---
+
+export type AssetBalance = {
+  asset: string;
+  balance: number;
+  available: number;
+  cross_unrealized_pnl: number;
+};
+
+export type PositionInfo = {
+  symbol: string;
+  position_side: string;
+  position_amt: number;
+  unrealized_pnl: number;
+  liquidation_price: number | null;
+  mark_price: number;
+  entry_price: number;
+  leverage: number;
+};
+
+export type AccountBalanceSnapshot = {
+  total_usdt_equity: number;
+  available_usdt: number;
+  usdt_in_positions: number;
+  unrealized_pnl: number;
+  assets: AssetBalance[];
+  fetched_at: string;
+};
+
+export type AccountSummary = {
+  balance: AccountBalanceSnapshot | null;
+  positions: PositionInfo[];
+  active_position_count: number;
+  fetched_at: string;
+};
+
+// --- Scheduler ---
+
+export type SchedulerCycleAction = {
+  action: "open_hedge" | "close_hedge";
+  symbol: string;
+  trade_id: string;
+  score: number;
+  risk_decision: string;
+  reason: string;
+};
+
+export type SchedulerCycleResult = {
+  cycle_started_at: string;
+  cycle_finished_at: string;
+  snapshots_evaluated: number;
+  positions_evaluated: number;
+  actions_generated: number;
+  actions_executed: number;
+  actions_skipped: number;
+  actions_failed: number;
+  actions: SchedulerCycleAction[];
+};
+
+export type SchedulerWorkerSnapshot = {
+  enabled: boolean;
+  configured: boolean;
+  running: boolean;
+  interval_seconds: number;
+  max_open_positions: number;
+  max_total_notional: number;
+  total_cycles: number;
+  total_failed_cycles: number;
+  total_actions_executed: number;
+  last_cycle_result: SchedulerCycleResult | null;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+};
+
+// --- Monitor ---
+
+export type HoldingAlert = {
+  trade_id: string;
+  symbol: string;
+  alert_type: string;
+  severity: "warning" | "critical";
+  detail: string;
+  entry_funding_rate: number;
+  current_funding_rate: number;
+  hold_periods: number;
+  max_hold_periods: number;
+};
+
+export type HoldingMonitorResult = {
+  evaluated_count: number;
+  alert_count: number;
+  close_executed: number;
+  close_skipped: number;
+  close_failed: number;
+  actions: Array<{
+    trade_id: string;
+    symbol: string;
+    action: "close_hedge" | "monitor";
+    alert: HoldingAlert | null;
+    outcome: "executed" | "skipped" | "failed";
+    reason: string | null;
+  }>;
+  cycle_started_at: string;
+  cycle_finished_at: string;
+};
+
+export type HoldingMonitorWorkerSnapshot = {
+  enabled: boolean;
+  configured: boolean;
+  running: boolean;
+  interval_seconds: number;
+  max_hold_periods: number;
+  total_cycles: number;
+  total_failed_cycles: number;
+  total_closes_executed: number;
+  last_cycle_result: HoldingMonitorResult | null;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+};
+
+// --- Auth ---
+export type LoginRequest = { username: string; password: string };
+export type RegisterRequest = { username: string; password: string };
+export type TokenResponse = { access_token: string; token_type: string; username: string; role: string };
+export type UserResponse = { id: string; username: string; role: string; created_at: string };
+
+// --- Credentials ---
+export type ApiKeySet = { label: string; exchange: string; api_key: string; api_secret: string };
+export type ApiKeySummary = { id: string; label: string; exchange: string; api_key_preview: string; created_at: string; is_active: boolean };
+
+// --- Trading ---
+export type ManualOrderRequest = { symbol: string; side: string; notional: number; mode: string };
+export type OrderPreview = { symbol: string; side: string; notional: number; spot_price: number; perp_price: number; funding_rate: number; estimated_fees_usd: number; estimated_net_edge_bps: number; risk_decision: string };
+export type OrderResult = { trade_id: string; status: string; spot_filled: number; perp_filled: number; executed_at: string };
+export type SymbolInfo = { symbol: string; funding_rate: number; mark_price: number };
